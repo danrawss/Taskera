@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <!-- Task Title -->
+    <TextView
+        android:id="@+id/tvTaskDetailTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Task Title"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="@color/black"/>
+
+    <!-- Task Description -->
+    <TextView
+        android:id="@+id/tvTaskDetailDescription"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Task description..."
+        android:textSize="14sp"
+        android:textColor="@color/dark_gray"
+        android:paddingTop="8dp"/>
+
+    <!-- Due Date -->
+    <TextView
+        android:id="@+id/tvTaskDetailDueDate"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Due Date: 12/03/2025"
+        android:textSize="14sp"
+        android:textColor="@color/black"
+        android:paddingTop="8dp"/>
+
+    <!-- Priority -->
+    <TextView
+        android:id="@+id/tvTaskDetailPriority"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Priority: High"
+        android:textSize="14sp"
+        android:textColor="@color/red"
+        android:paddingTop="4dp"/>
+
+    <!-- Category -->
+    <TextView
+        android:id="@+id/tvTaskDetailCategory"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Category: Work"
+        android:textSize="14sp"
+        android:textColor="@color/blue"
+        android:paddingTop="4dp"/>
+
+    <!-- Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end"
+        android:paddingTop="16dp">
+
+        <Button
+            android:id="@+id/btnEditTask"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Edit"/>
+
+        <Button
+            android:id="@+id/btnDeleteTask"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Delete"
+            android:layout_marginStart="8dp"
+            android:textColor="@color/white"
+            android:backgroundTint="@color/red"/>
+    </LinearLayout>
+
+</LinearLayout>

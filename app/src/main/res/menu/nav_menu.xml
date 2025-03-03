@@ -1,0 +1,19 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/nav_home"
+        android:title="Home"
+        android:icon="@drawable/ic_home" />
+
+    <item
+        android:id="@+id/nav_settings"
+        android:title="Settings"
+        android:icon="@drawable/ic_settings" />
+
+    <item
+        android:id="@+id/nav_dark_mode"
+        android:title="Dark Mode"
+        android:icon="@drawable/ic_dark_mode"
+        app:actionViewClass="androidx.appcompat.widget.SwitchCompat"/>
+</menu>

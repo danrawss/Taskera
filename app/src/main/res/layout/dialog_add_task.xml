@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <!-- Task Title -->
+    <EditText
+        android:id="@+id/etTaskTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Task Title" />
+
+    <!-- Task Description -->
+    <EditText
+        android:id="@+id/etTaskDescription"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Task Description" />
+
+    <!-- Priority Dropdown -->
+    <TextView
+        android:id="@+id/tvPriorityLabel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Priority:"
+        android:textStyle="bold"
+        android:paddingTop="8dp" />
+
+    <Spinner
+        android:id="@+id/spinnerPriority"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
+    <!-- Due Date Picker -->
+    <TextView
+        android:id="@+id/tvDueDateLabel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Due Date:"
+        android:textStyle="bold"
+        android:paddingTop="8dp" />
+
+    <Button
+        android:id="@+id/btnSelectDate"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Select Date" />
+
+    <!-- Category Dropdown -->
+    <TextView
+        android:id="@+id/tvCategoryLabel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Category:"
+        android:textStyle="bold"
+        android:paddingTop="8dp" />
+
+    <Spinner
+        android:id="@+id/spinnerCategory"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
+</LinearLayout>

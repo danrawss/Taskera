@@ -13,16 +13,16 @@ import com.example.taskera.viewmodel.TaskViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
-class AddTaskDialogFragment : DialogFragment() {
+class EditTaskDialogFragment(private val task: Task) : DialogFragment() {
 
     private val taskViewModel: TaskViewModel by activityViewModels()
-    private var selectedDate: Date? = null
+    private var selectedDate: Date? = task.dueDate
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val builder = AlertDialog.Builder(requireContext())
         val inflater = requireActivity().layoutInflater
 
-        // Inflate the custom dialog layout
+        // Inflate layout
         val dialogView = inflater.inflate(R.layout.dialog_add_task, null)
 
         val etTitle = dialogView.findViewById<EditText>(R.id.etTaskTitle)
@@ -31,26 +31,36 @@ class AddTaskDialogFragment : DialogFragment() {
         val btnSelectDate = dialogView.findViewById<Button>(R.id.btnSelectDate)
         val spinnerCategory = dialogView.findViewById<Spinner>(R.id.spinnerCategory)
 
-        // Set up Priority Dropdown
+        // Set initial values
+        etTitle.setText(task.title)
+        etDescription.setText(task.description)
+
+        // Priority dropdown setup
         val priorities = arrayOf("Low", "Medium", "High")
         val priorityAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, priorities)
         spinnerPriority.adapter = priorityAdapter
+        spinnerPriority.setSelection(priorities.indexOf(task.priority))
 
-        // Set up Category Dropdown
+        // Category dropdown setup
         val categories = arrayOf("Personal", "Work", "Study", "Health", "Finance", "Other")
         val categoryAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, categories)
         spinnerCategory.adapter = categoryAdapter
+        spinnerCategory.setSelection(categories.indexOf(task.category))
 
-        // Set up Date Picker
+        // Date Picker setup
         val calendar = Calendar.getInstance()
         val dateFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+
+        task.dueDate?.let {
+            btnSelectDate.text = dateFormatter.format(it)
+        }
 
         btnSelectDate.setOnClickListener {
             val datePicker = DatePickerDialog(requireContext(),
                 { _, year, month, dayOfMonth ->
                     calendar.set(year, month, dayOfMonth)
                     selectedDate = calendar.time
-                    btnSelectDate.text = dateFormatter.format(selectedDate!!)  // Update button text with selected date
+                    btnSelectDate.text = dateFormatter.format(selectedDate!!)
                 },
                 calendar.get(Calendar.YEAR),
                 calendar.get(Calendar.MONTH),
@@ -59,23 +69,32 @@ class AddTaskDialogFragment : DialogFragment() {
             datePicker.show()
         }
 
+        // Save Changes
         builder.setView(dialogView)
-            .setTitle("Add New Task")
-            .setPositiveButton("Add") { _, _ ->
+            .setTitle("Edit Task")
+            .setPositiveButton("Save") { _, _ ->
                 val title = etTitle.text.toString().trim()
                 val description = etDescription.text.toString().trim()
                 val priority = spinnerPriority.selectedItem.toString()
                 val category = spinnerCategory.selectedItem.toString()
 
                 if (title.isNotEmpty()) {
-                    val newTask = Task(
+                    val updatedTask = task.copy(
                         title = title,
                         description = if (description.isEmpty()) null else description,
-                        priority = priority,  // ✅ Keep priority
-                        dueDate = selectedDate,  // ✅ Store selected date
-                        category = category  // ✅ Store selected category
+                        priority = priority,
+                        dueDate = selectedDate,
+                        category = category
                     )
-                    taskViewModel.insertTask(newTask)
+                    taskViewModel.updateTask(updatedTask)
+
+                    // Dismiss Edit Dialog
+                    dismiss()
+
+                    // Close the TaskDetailDialog if it's open
+                    parentFragmentManager.findFragmentByTag("TaskDetailDialog")?.let { fragment ->
+                        (fragment as DialogFragment).dismiss()
+                    }
                 }
             }
             .setNegativeButton("Cancel") { dialog, _ ->

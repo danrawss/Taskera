@@ -1,14 +1,9 @@
 <resources>
     <!-- Primary Colors -->
     <color name="primary">#6200EE</color>
+    <color name="soft_primary">#BB86FC</color>  <!-- Softer Primary Color -->
     <color name="secondary">#03DAC5</color>
-
-    <!-- Primary Colors -->
-    <color name="purple_200">#BB86FC</color>
-    <color name="purple_500">#6200EE</color>
-    <color name="purple_700">#3700B3</color>
-    <color name="teal_200">#03DAC5</color>
-    <color name="teal_700">#018786</color>
+    <color name="primary_variant">#A65FE2</color> <!-- Slightly Darker Primary for Ripple Effects -->
 
     <!-- General Colors -->
     <color name="black">#000000</color>

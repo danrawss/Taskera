@@ -83,4 +83,5 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
 
     implementation("androidx.fragment:fragment-ktx:1.5.7")
+    implementation("com.github.Applandeo:Material-Calendar-View:v1.3")
 }

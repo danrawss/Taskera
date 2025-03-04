@@ -24,4 +24,12 @@ class TaskViewModel(private val repository: TaskRepository) : ViewModel() {
     fun getTaskById(taskId: Int): LiveData<Task> {
         return repository.getTaskById(taskId)
     }
+
+    fun getTasksByDate(startOfDay: Long, endOfDay: Long): LiveData<List<Task>> {
+        return repository.getTasksByDate(startOfDay, endOfDay)
+    }
+
+    fun getDistinctTaskDates(): LiveData<List<String>> {
+        return repository.getDistinctTaskDates()
+    }
 }

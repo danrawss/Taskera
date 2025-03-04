@@ -1,35 +1,37 @@
 package com.example.taskera.ui
 
-import android.content.SharedPreferences
 import android.os.Bundle
+import android.util.Log
 import android.view.MenuItem
 import android.view.View
-import android.widget.TextView
 import androidx.activity.viewModels
+import android.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.ActionBarDrawerToggle
-import androidx.appcompat.app.AppCompatDelegate
-import androidx.appcompat.widget.SwitchCompat
 import androidx.appcompat.widget.Toolbar
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.applandeo.materialcalendarview.CalendarView
+import com.applandeo.materialcalendarview.EventDay
 import com.example.taskera.R
 import com.example.taskera.data.TaskDatabase
+import com.example.taskera.data.Task
 import com.example.taskera.repository.TaskRepository
 import com.example.taskera.viewmodel.TaskViewModel
 import com.example.taskera.viewmodel.TaskViewModelFactory
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.navigation.NavigationView
+import java.text.SimpleDateFormat
+import java.util.*
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var taskAdapter: TaskAdapter
-    private lateinit var sharedPreferences: SharedPreferences
-    private var darkModeSwitch: SwitchCompat? = null  // ✅ Ensure it's nullable
+    private val dateFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
     private val taskViewModel: TaskViewModel by viewModels {
         val database = TaskDatabase.getInstance(this)
@@ -39,7 +41,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        loadTheme() // Load the saved theme before setting the layout
         setContentView(R.layout.activity_main)
 
         // Setup Toolbar
@@ -55,84 +56,86 @@ class MainActivity : AppCompatActivity() {
         drawerLayout.addDrawerListener(toggle)
         toggle.syncState()
 
-        // ✅ Find the Dark Mode switch from the Navigation Menu
-        val menuItem: MenuItem = navView.menu.findItem(R.id.nav_dark_mode)
-        val actionView: View? = menuItem.actionView
-        darkModeSwitch = actionView?.findViewById(R.id.switch_dark_mode) as? SwitchCompat
+        // RecyclerView for displaying tasks
+        val recyclerView = findViewById<RecyclerView>(R.id.rvTaskList)
+        val fabAddTask = findViewById<FloatingActionButton>(R.id.fabAddTask)
+        val calendarView = findViewById<CalendarView>(R.id.calendarView)
 
-        darkModeSwitch?.apply {
-            isChecked = getSavedTheme() // ✅ Load saved theme state
-            setOnCheckedChangeListener { _, isChecked ->
-                toggleDarkMode(isChecked)
-            }
-        }
-
-        // Prevent closing the menu when clicking the switch
-        actionView?.setOnClickListener {
-            darkModeSwitch?.toggle()
-        }
-
-        // Handle Navigation Drawer Item Clicks
-        navView.setNavigationItemSelectedListener { menuItem ->
-            when (menuItem.itemId) {
-                R.id.nav_home -> drawerLayout.closeDrawer(GravityCompat.START)
-                R.id.nav_settings -> {
-                    // Open settings activity (if needed)
-                }
-            }
-            true
-        }
-
-        // Initialize the adapter and handle clicks on tasks
         taskAdapter = TaskAdapter { task ->
             val dialog = TaskDetailDialogFragment(task)
             dialog.show(supportFragmentManager, "TaskDetailDialog")
         }
-
-        // Setup RecyclerView with Grid Layout (2 columns)
-        val recyclerView = findViewById<RecyclerView>(R.id.rvTaskList)
         recyclerView.adapter = taskAdapter
         recyclerView.layoutManager = GridLayoutManager(this, 2)
 
-        // Observe LiveData from ViewModel
+        // Observe All Tasks Initially
         taskViewModel.allTasks.observe(this, Observer { tasks ->
             taskAdapter.setData(tasks)
+            highlightTaskDates(calendarView, tasks) // Highlight task dates
         })
 
-        // Floating Action Button for Adding a Task
-        val fabAddTask = findViewById<FloatingActionButton>(R.id.fabAddTask)
+        // ✅ Open a dialog with tasks when clicking on a date
+        calendarView.setOnDayClickListener { eventDay ->
+            val selectedCalendar = eventDay.calendar
+            selectedCalendar.set(Calendar.HOUR_OF_DAY, 0)
+            selectedCalendar.set(Calendar.MINUTE, 0)
+            selectedCalendar.set(Calendar.SECOND, 0)
+            selectedCalendar.set(Calendar.MILLISECOND, 0)
+            val startOfDay = selectedCalendar.timeInMillis
+
+            selectedCalendar.set(Calendar.HOUR_OF_DAY, 23)
+            selectedCalendar.set(Calendar.MINUTE, 59)
+            selectedCalendar.set(Calendar.SECOND, 59)
+            selectedCalendar.set(Calendar.MILLISECOND, 999)
+            val endOfDay = selectedCalendar.timeInMillis
+
+            // ✅ Remove previous observers to prevent multiple triggers
+            taskViewModel.getTasksByDate(startOfDay, endOfDay).removeObservers(this)
+
+            taskViewModel.getTasksByDate(startOfDay, endOfDay).observe(this, Observer { tasks ->
+                val existingDialog = supportFragmentManager.findFragmentByTag("TaskListDialog") as? TaskListDialogFragment
+
+                if (tasks.isNotEmpty()) {
+                    if (existingDialog != null) {
+                        // ✅ If dialog is already open, update its contents
+                        existingDialog.updateTasks(tasks)
+                    } else {
+                        // ✅ If dialog is NOT open, create and show a new one
+                        val dialog = TaskListDialogFragment.newInstance(tasks)
+                        dialog.show(supportFragmentManager, "TaskListDialog")
+                    }
+                } else {
+                    // ✅ Close the dialog if there are no tasks left
+                    existingDialog?.dismiss()
+                }
+            })
+        }
+
+
+        // Floating Action Button Click
         fabAddTask.setOnClickListener {
             val dialog = AddTaskDialogFragment()
             dialog.show(supportFragmentManager, "AddTaskDialog")
         }
     }
 
-    private fun toggleDarkMode(enableDarkMode: Boolean) {
-        if (enableDarkMode) {
-            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
-        } else {
-            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
+    private fun highlightTaskDates(calendarView: CalendarView, tasks: List<Task>) {
+        val events = mutableListOf<EventDay>()
+        for (task in tasks) {
+            task.dueDate?.let { date ->
+                val calendar = Calendar.getInstance().apply { time = date }
+                events.add(EventDay(calendar, R.drawable.ic_task_marker)) // Add a small dot/icon
+            }
         }
-        saveTheme(enableDarkMode)
-        recreate() // Restart the activity to apply the theme change
+        calendarView.setEvents(events)
     }
 
-    private fun saveTheme(isDarkMode: Boolean) {
-        val editor = sharedPreferences.edit()
-        editor.putBoolean("dark_mode", isDarkMode)
-        editor.apply()
-    }
-
-    private fun loadTheme() {
-        sharedPreferences = getSharedPreferences("TaskeraPrefs", MODE_PRIVATE)
-        val isDarkMode = sharedPreferences.getBoolean("dark_mode", false)
-        AppCompatDelegate.setDefaultNightMode(
-            if (isDarkMode) AppCompatDelegate.MODE_NIGHT_YES else AppCompatDelegate.MODE_NIGHT_NO
-        )
-    }
-
-    private fun getSavedTheme(): Boolean {
-        sharedPreferences = getSharedPreferences("TaskeraPrefs", MODE_PRIVATE)
-        return sharedPreferences.getBoolean("dark_mode", false)
+    // ✅ Method to Show a Simple Dialog
+    private fun showNoTasksDialog() {
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle("No Tasks")
+        builder.setMessage("There are no tasks scheduled for this date.")
+        builder.setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
+        builder.show()
     }
 }

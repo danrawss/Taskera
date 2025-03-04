@@ -23,4 +23,12 @@ class TaskRepository(private val taskDao: TaskDao) {
     fun getTaskById(taskId: Int): LiveData<Task> {
         return taskDao.getTaskById(taskId)
     }
+
+    fun getTasksByDate(startOfDay: Long, endOfDay: Long): LiveData<List<Task>> {
+        return taskDao.getTasksByDate(startOfDay, endOfDay)
+    }
+
+    fun getDistinctTaskDates(): LiveData<List<String>> {
+        return taskDao.getDistinctTaskDates()
+    }
 }

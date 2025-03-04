@@ -1,17 +1,12 @@
 package com.example.taskera.data
 
 import android.content.Context
-import androidx.room.Database
-import androidx.room.Room
-import androidx.room.RoomDatabase
-import androidx.room.TypeConverters
+import androidx.room.*
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
-@Database(
-    entities = [Task::class],
-    version = 1,
-    exportSchema = false
-)
-@TypeConverters(Converters::class) // If using Date Converters
+@Database(entities = [Task::class], version = 1, exportSchema = false)
+@TypeConverters(Converters::class)
 abstract class TaskDatabase : RoomDatabase() {
 
     abstract fun taskDao(): TaskDao
@@ -25,8 +20,9 @@ abstract class TaskDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     TaskDatabase::class.java,
-                    "task_db"
-                ).build()
+                    "task_database"
+                ).fallbackToDestructiveMigration()
+                    .build()
                 INSTANCE = instance
                 instance
             }

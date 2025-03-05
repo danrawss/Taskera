@@ -71,9 +71,9 @@ class AddTaskDialogFragment : DialogFragment() {
                     val newTask = Task(
                         title = title,
                         description = if (description.isEmpty()) null else description,
-                        priority = priority,  // ✅ Keep priority
-                        dueDate = selectedDate,  // ✅ Store selected date
-                        category = category  // ✅ Store selected category
+                        priority = priority,
+                        dueDate = selectedDate,
+                        category = category
                     )
                     taskViewModel.insertTask(newTask)
                 }

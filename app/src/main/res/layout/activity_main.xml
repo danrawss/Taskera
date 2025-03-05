@@ -54,6 +54,82 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"/>
 
+        <!-- Sorting DropDown -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/sortDropdownLayout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginStart="16dp"
+            app:boxBackgroundMode="filled"
+            app:boxStrokeColor="@color/dark_gray"
+            app:boxBackgroundColor="@color/soft_primary"
+            app:layout_constraintTop_toBottomOf="@id/calendarView"
+            app:layout_constraintStart_toStartOf="parent"
+            android:clickable="true"
+            android:focusable="true">
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/rounded_background"
+                android:padding="8dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <!-- "Sort by" Text -->
+                <TextView
+                    android:id="@+id/sortByLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="Sort by"
+                    android:textColor="@color/black"
+                    android:textSize="16sp"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"/>
+
+                <!-- Chosen Sorting Option -->
+                <AutoCompleteTextView
+                    android:id="@+id/sortDropdown"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:background="@null"
+                    android:clickable="true"
+                    android:focusable="false"
+                    android:ellipsize="end"
+                    android:gravity="center_vertical|end"
+                    android:inputType="none"
+                    android:maxLines="1"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="32dp"
+                    android:textColor="@color/black"
+                    android:textSize="16sp"
+                    app:layout_constraintBottom_toBottomOf="@id/sortByLabel"
+                    app:layout_constraintEnd_toStartOf="@id/sortDropdownArrow"
+                    app:layout_constraintStart_toEndOf="@id/sortByLabel"
+                    app:layout_constraintTop_toTopOf="@id/sortByLabel"
+                    app:layout_constraintWidth_percent="0.6"/>
+
+                <!-- Dropdown Arrow Icon (Now Clickable) -->
+                <ImageView
+                    android:id="@+id/sortDropdownArrow"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_arrow_up"
+                    app:tint="@color/dark_gray"
+                    android:contentDescription="Dropdown"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent"/>
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        </com.google.android.material.textfield.TextInputLayout>
+
         <!-- RecyclerView for Tasks (Below Calendar) -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvTaskList"
@@ -61,7 +137,7 @@
             android:layout_height="0dp"
             app:spanCount="2"
             app:layoutManager="androidx.recyclerview.widget.GridLayoutManager"
-            app:layout_constraintTop_toBottomOf="@id/calendarView"
+            app:layout_constraintTop_toBottomOf="@id/sortDropdownLayout"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"/>

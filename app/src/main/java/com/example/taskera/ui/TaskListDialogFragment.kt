@@ -14,15 +14,21 @@ import com.example.taskera.R
 import com.example.taskera.data.Task
 import com.example.taskera.viewmodel.TaskViewModel
 
-class TaskListDialogFragment(private var tasks: List<Task>) : DialogFragment() {
-
-    companion object {
-        fun newInstance(tasks: List<Task>): TaskListDialogFragment {
-            return TaskListDialogFragment(tasks)
-        }
-    }
+class TaskListDialogFragment(
+    private var tasks: List<Task>,
+    private val onTaskStatusChanged: (Task) -> Unit
+) : DialogFragment() {
 
     private lateinit var taskAdapter: TaskAdapter
+
+    companion object {
+        fun newInstance(
+            tasks: List<Task>,
+            onTaskStatusChanged: (Task) -> Unit
+        ): TaskListDialogFragment {
+            return TaskListDialogFragment(tasks, onTaskStatusChanged)
+        }
+    }
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val builder = AlertDialog.Builder(requireContext())
@@ -30,14 +36,20 @@ class TaskListDialogFragment(private var tasks: List<Task>) : DialogFragment() {
         val view = inflater.inflate(R.layout.dialog_task_list, null)
 
         val recyclerView = view.findViewById<RecyclerView>(R.id.rvTaskList)
-        taskAdapter = TaskAdapter { task ->
-            val dialog = TaskDetailDialogFragment(task)
-            dialog.show(parentFragmentManager, "TaskDetailDialog")
-        }
+        taskAdapter = TaskAdapter(
+            onItemClick = { task ->
+                val dialog = TaskDetailDialogFragment(task)
+                dialog.show(parentFragmentManager, "TaskDetailDialog")
+            },
+            onTaskStatusChanged = { updatedTask ->
+                onTaskStatusChanged(updatedTask)
+            }
+        )
+
         recyclerView.adapter = taskAdapter
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
 
-        // ✅ Set initial data
+        // Set initial data
         taskAdapter.setData(tasks)
 
         builder.setView(view)
@@ -48,10 +60,9 @@ class TaskListDialogFragment(private var tasks: List<Task>) : DialogFragment() {
         return builder.create()
     }
 
-    // ✅ Method to update tasks dynamically
     fun updateTasks(updatedTasks: List<Task>) {
         if (updatedTasks.isEmpty()) {
-            dismiss() // ✅ Close dialog if no tasks left
+            dismiss()
         } else {
             tasks = updatedTasks
             taskAdapter.setData(updatedTasks)

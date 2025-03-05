@@ -32,4 +32,12 @@ class TaskViewModel(private val repository: TaskRepository) : ViewModel() {
     fun getDistinctTaskDates(): LiveData<List<String>> {
         return repository.getDistinctTaskDates()
     }
+
+    fun getTasksSortedByPriority(): LiveData<List<Task>> {
+        return repository.getTasksSortedByPriority()
+    }
+
+    fun updateTaskCompletion(taskId: Int, isCompleted: Boolean) = viewModelScope.launch {
+        repository.updateTaskCompletion(taskId, isCompleted)
+    }
 }

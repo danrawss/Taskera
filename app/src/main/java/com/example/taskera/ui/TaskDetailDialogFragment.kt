@@ -37,9 +37,9 @@ class TaskDetailDialogFragment(private val task: Task) : DialogFragment() {
         tvDescription.text = task.description ?: "No description"
         tvDueDate.text = task.dueDate?.let { "Due Date: ${dateFormatter.format(it)}" } ?: "No due date"
         tvCategory.text = "Category: ${task.category}"
-        tvPriority.text = "Priority: ${task.priority}" // ✅ Show priority
+        tvPriority.text = "Priority: ${task.priority}"
 
-        // ✅ Set priority color
+        // Set priority color
         val priorityColors = mapOf(
             "High" to R.color.red,
             "Medium" to R.color.orange,

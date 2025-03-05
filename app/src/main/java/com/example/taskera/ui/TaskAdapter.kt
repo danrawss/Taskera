@@ -3,6 +3,7 @@ package com.example.taskera.ui
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.CheckBox
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
@@ -12,7 +13,10 @@ import com.example.taskera.data.Task
 import java.text.SimpleDateFormat
 import java.util.*
 
-class TaskAdapter(private val onItemClick: (Task) -> Unit) : RecyclerView.Adapter<TaskAdapter.TaskViewHolder>() {
+class TaskAdapter(
+    private val onItemClick: (Task) -> Unit,
+    private val onTaskStatusChanged: (Task) -> Unit
+) : RecyclerView.Adapter<TaskAdapter.TaskViewHolder>() {
 
     private var taskList = emptyList<Task>()
 
@@ -21,6 +25,7 @@ class TaskAdapter(private val onItemClick: (Task) -> Unit) : RecyclerView.Adapte
         val tvDueDate: TextView = itemView.findViewById(R.id.tvDueDate)
         val tvPriority: TextView = itemView.findViewById(R.id.tvPriority)
         val tvCategory: TextView = itemView.findViewById(R.id.tvCategory)
+        val checkBox: CheckBox = itemView.findViewById(R.id.taskCheckBox)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TaskViewHolder {
@@ -36,6 +41,22 @@ class TaskAdapter(private val onItemClick: (Task) -> Unit) : RecyclerView.Adapte
         holder.tvDueDate.text = task.dueDate?.let { "Due: ${dateFormatter.format(it)}" } ?: "No due date"
         holder.tvPriority.text = "Priority: ${task.priority}"
         holder.tvCategory.text = "Category: ${task.category}"
+
+        // Remove previous listener before setting a new one
+        holder.checkBox.setOnCheckedChangeListener(null)
+        holder.checkBox.isChecked = task.isCompleted
+
+        holder.checkBox.setOnCheckedChangeListener { _, isChecked ->
+            val updatedTask = task.copy(isCompleted = isChecked)
+            holder.checkBox.isEnabled = false
+
+            onTaskStatusChanged(updatedTask)
+
+            holder.checkBox.postDelayed({
+                holder.checkBox.isEnabled = true
+            }, 200)
+        }
+
 
         val context = holder.itemView.context
 

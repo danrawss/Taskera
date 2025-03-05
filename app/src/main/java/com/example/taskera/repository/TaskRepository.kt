@@ -31,4 +31,12 @@ class TaskRepository(private val taskDao: TaskDao) {
     fun getDistinctTaskDates(): LiveData<List<String>> {
         return taskDao.getDistinctTaskDates()
     }
+
+    fun getTasksSortedByPriority(): LiveData<List<Task>> {
+        return taskDao.getTasksSortedByPriority()
+    }
+
+    suspend fun updateTaskCompletion(taskId: Int, isCompleted: Boolean) {
+        taskDao.updateTaskCompletion(taskId, isCompleted)
+    }
 }

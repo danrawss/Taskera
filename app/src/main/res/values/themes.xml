@@ -6,13 +6,4 @@
         <item name="android:windowBackground">@color/white</item>
         <item name="android:statusBarColor">@color/primary</item>
     </style>
-
-    <style name="Theme.Taskera.Dark" parent="Theme.Material3.Dark.NoActionBar">
-        <item name="colorPrimary">@color/primary</item>
-        <item name="colorPrimaryVariant">@color/primary</item>
-        <item name="colorSecondary">@color/secondary</item>
-        <item name="android:windowBackground">@color/black</item>
-        <item name="android:statusBarColor">@color/black</item>
-    </style>
-
 </resources>

@@ -1,6 +1,7 @@
 package com.example.taskera.ui
 
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
@@ -8,8 +9,10 @@ import android.widget.ImageView
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.ActionBarDrawerToggle
+import androidx.appcompat.widget.SwitchCompat
 import androidx.appcompat.widget.Toolbar
 import androidx.core.view.GravityCompat
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.GridLayoutManager
@@ -47,6 +50,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Apply saved theme preference on startup
+        val isDarkMode = getSharedPreferences("TaskeraPrefs", MODE_PRIVATE)
+            .getBoolean("dark_mode", false)
+        AppCompatDelegate.setDefaultNightMode(
+            if (isDarkMode) AppCompatDelegate.MODE_NIGHT_YES
+            else AppCompatDelegate.MODE_NIGHT_NO
+        )
+
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
@@ -57,11 +68,45 @@ class MainActivity : AppCompatActivity() {
         // Setup Drawer Layout and NavigationView
         drawerLayout = findViewById(R.id.drawer_layout)
         val navView = findViewById<NavigationView>(R.id.nav_view)
+        navView.bringToFront()
 
         // Enable Menu Icon (☰) to Open Navigation Drawer
         val toggle = ActionBarDrawerToggle(this, drawerLayout, toolbar, R.string.nav_open, R.string.nav_close)
         drawerLayout.addDrawerListener(toggle)
         toggle.syncState()
+
+        // Ensure navView is interactive
+        navView.bringToFront()
+
+        // Find the menu item
+        val menu = navView.menu
+        val darkModeItem = menu.findItem(R.id.nav_dark_mode)
+        val switchView = darkModeItem.actionView as? SwitchCompat
+
+        // Load saved theme preference
+        val sharedPreferences = getSharedPreferences("TaskeraPrefs", MODE_PRIVATE)
+        switchView?.isChecked = isDarkMode
+
+        switchView?.setOnCheckedChangeListener { _, isChecked ->
+            // Update switch to prevent UI delay issues
+            switchView.isChecked = isChecked
+
+            // Save theme choice to SharedPreferences
+            with(sharedPreferences.edit()) {
+                putBoolean("dark_mode", isChecked)
+                apply()
+            }
+
+            // Set the night mode
+            if (isChecked) {
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
+            } else {
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
+            }
+
+            // Recreate the activity to apply theme changes
+            recreate()
+        }
 
         // RecyclerView for displaying tasks
         val recyclerView = findViewById<RecyclerView>(R.id.rvTaskList)

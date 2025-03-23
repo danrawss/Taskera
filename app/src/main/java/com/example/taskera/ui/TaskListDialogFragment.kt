@@ -1,18 +1,13 @@
 package com.example.taskera.ui
 
 import android.app.Dialog
-import android.content.DialogInterface
 import android.os.Bundle
-import android.widget.ArrayAdapter
-import android.widget.ListView
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.DialogFragment
-import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.taskera.R
 import com.example.taskera.data.Task
-import com.example.taskera.viewmodel.TaskViewModel
 
 class TaskListDialogFragment(
     private var tasks: List<Task>,
@@ -35,9 +30,11 @@ class TaskListDialogFragment(
         val inflater = requireActivity().layoutInflater
         val view = inflater.inflate(R.layout.dialog_task_list, null)
 
+        // Initialize RecyclerView and adapter
         val recyclerView = view.findViewById<RecyclerView>(R.id.rvTaskList)
         taskAdapter = TaskAdapter(
             onItemClick = { task ->
+                // Open TaskDetailDialogFragment for the selected task
                 val dialog = TaskDetailDialogFragment(task)
                 dialog.show(parentFragmentManager, "TaskDetailDialog")
             },
@@ -45,7 +42,6 @@ class TaskListDialogFragment(
                 onTaskStatusChanged(updatedTask)
             }
         )
-
         recyclerView.adapter = taskAdapter
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
 
@@ -70,7 +66,3 @@ class TaskListDialogFragment(
         }
     }
 }
-
-
-
-

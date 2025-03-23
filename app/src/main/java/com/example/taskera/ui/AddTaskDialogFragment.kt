@@ -3,6 +3,7 @@ package com.example.taskera.ui
 import android.app.AlertDialog
 import android.app.DatePickerDialog
 import android.app.Dialog
+import android.app.TimePickerDialog
 import android.os.Bundle
 import android.widget.*
 import androidx.fragment.app.DialogFragment
@@ -10,13 +11,19 @@ import androidx.fragment.app.activityViewModels
 import com.example.taskera.R
 import com.example.taskera.data.Task
 import com.example.taskera.viewmodel.TaskViewModel
+import com.google.android.gms.auth.api.signin.GoogleSignIn
 import java.text.SimpleDateFormat
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import java.util.*
 
 class AddTaskDialogFragment : DialogFragment() {
 
     private val taskViewModel: TaskViewModel by activityViewModels()
     private var selectedDate: Date? = null
+    private var selectedStartTime: LocalTime? = null
+    private var selectedEndTime: LocalTime? = null
+    private val timeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault())
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val builder = AlertDialog.Builder(requireContext())
@@ -30,6 +37,9 @@ class AddTaskDialogFragment : DialogFragment() {
         val spinnerPriority = dialogView.findViewById<Spinner>(R.id.spinnerPriority)
         val btnSelectDate = dialogView.findViewById<Button>(R.id.btnSelectDate)
         val spinnerCategory = dialogView.findViewById<Spinner>(R.id.spinnerCategory)
+        // New buttons for time selection
+        val btnSelectStartTime = dialogView.findViewById<Button>(R.id.btnSelectStartTime)
+        val btnSelectEndTime = dialogView.findViewById<Button>(R.id.btnSelectEndTime)
 
         // Set up Priority Dropdown
         val priorities = arrayOf("Low", "Medium", "High")
@@ -50,13 +60,43 @@ class AddTaskDialogFragment : DialogFragment() {
                 { _, year, month, dayOfMonth ->
                     calendar.set(year, month, dayOfMonth)
                     selectedDate = calendar.time
-                    btnSelectDate.text = dateFormatter.format(selectedDate!!)  // Update button text with selected date
+                    btnSelectDate.text = dateFormatter.format(selectedDate!!)
                 },
                 calendar.get(Calendar.YEAR),
                 calendar.get(Calendar.MONTH),
                 calendar.get(Calendar.DAY_OF_MONTH)
             )
             datePicker.show()
+        }
+
+        // Set up Start Time Picker
+        btnSelectStartTime.setOnClickListener {
+            val currentTime = LocalTime.now()
+            val timePicker = TimePickerDialog(requireContext(),
+                { _, hour, minute ->
+                    selectedStartTime = LocalTime.of(hour, minute)
+                    btnSelectStartTime.text = selectedStartTime?.format(timeFormatter)
+                },
+                currentTime.hour,
+                currentTime.minute,
+                true
+            )
+            timePicker.show()
+        }
+
+        // Set up End Time Picker
+        btnSelectEndTime.setOnClickListener {
+            val currentTime = LocalTime.now()
+            val timePicker = TimePickerDialog(requireContext(),
+                { _, hour, minute ->
+                    selectedEndTime = LocalTime.of(hour, minute)
+                    btnSelectEndTime.text = selectedEndTime?.format(timeFormatter)
+                },
+                currentTime.hour,
+                currentTime.minute,
+                true
+            )
+            timePicker.show()
         }
 
         builder.setView(dialogView)
@@ -68,12 +108,19 @@ class AddTaskDialogFragment : DialogFragment() {
                 val category = spinnerCategory.selectedItem.toString()
 
                 if (title.isNotEmpty()) {
+                    // Retrieve current signed-in user's email
+                    val currentUserEmail = GoogleSignIn.getLastSignedInAccount(requireContext())?.email ?: ""
+
                     val newTask = Task(
                         title = title,
                         description = if (description.isEmpty()) null else description,
-                        priority = priority,
                         dueDate = selectedDate,
-                        category = category
+                        startTime = selectedStartTime,
+                        endTime = selectedEndTime,
+                        priority = priority,
+                        category = category,
+                        isCompleted = false,
+                        userEmail = currentUserEmail
                     )
                     taskViewModel.insertTask(newTask)
                 }

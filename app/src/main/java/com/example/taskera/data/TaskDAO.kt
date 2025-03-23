@@ -16,20 +16,26 @@ interface TaskDao {
     @Delete
     suspend fun deleteTask(task: Task)
 
-    @Query("SELECT * FROM tasks ORDER BY id DESC")
-    fun getAllTasks(): LiveData<List<Task>>
+    // Get all tasks for a specific user
+    @Query("SELECT * FROM tasks WHERE userEmail = :userEmail ORDER BY id DESC")
+    fun getAllTasks(userEmail: String): LiveData<List<Task>>
 
-    @Query("SELECT * FROM tasks WHERE id = :taskId")
-    fun getTaskById(taskId: Int): LiveData<Task>
+    // Get a single task by id for a specific user
+    @Query("SELECT * FROM tasks WHERE id = :taskId AND userEmail = :userEmail")
+    fun getTaskById(taskId: Int, userEmail: String): LiveData<Task>
 
-    @Query("SELECT * FROM tasks WHERE dueDate BETWEEN :startOfDay AND :endOfDay")
-    fun getTasksByDate(startOfDay: Long, endOfDay: Long): LiveData<List<Task>>
+    // Get tasks by date range for a specific user
+    @Query("SELECT * FROM tasks WHERE userEmail = :userEmail AND dueDate BETWEEN :startOfDay AND :endOfDay")
+    fun getTasksByDate(userEmail: String, startOfDay: Long, endOfDay: Long): LiveData<List<Task>>
 
-    @Query("SELECT DISTINCT strftime('%Y-%m-%d', dueDate / 1000, 'unixepoch') FROM tasks WHERE dueDate IS NOT NULL")
-    fun getDistinctTaskDates(): LiveData<List<String>>
+    // Get distinct task dates for a specific user
+    @Query("SELECT DISTINCT strftime('%Y-%m-%d', dueDate / 1000, 'unixepoch') FROM tasks WHERE userEmail = :userEmail AND dueDate IS NOT NULL")
+    fun getDistinctTaskDates(userEmail: String): LiveData<List<String>>
 
+    // Get tasks sorted by priority for a specific user
     @Query("""
         SELECT * FROM tasks 
+        WHERE userEmail = :userEmail
         ORDER BY 
             CASE priority 
                 WHEN 'High' THEN 1
@@ -37,7 +43,7 @@ interface TaskDao {
                 WHEN 'Low' THEN 3
             END, dueDate ASC
     """)
-    fun getTasksSortedByPriority(): LiveData<List<Task>>
+    fun getTasksSortedByPriority(userEmail: String): LiveData<List<Task>>
 
     @Query("UPDATE tasks SET isCompleted = :isCompleted WHERE id = :taskId")
     suspend fun updateTaskCompletion(taskId: Int, isCompleted: Boolean)

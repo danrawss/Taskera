@@ -12,6 +12,7 @@ import com.example.taskera.R
 import com.example.taskera.data.Task
 import com.example.taskera.viewmodel.TaskViewModel
 import java.text.SimpleDateFormat
+import java.time.format.DateTimeFormatter
 import java.util.*
 
 class TaskDetailDialogFragment(private val task: Task) : DialogFragment() {
@@ -26,18 +27,33 @@ class TaskDetailDialogFragment(private val task: Task) : DialogFragment() {
         val tvTitle = dialogView.findViewById<TextView>(R.id.tvTaskDetailTitle)
         val tvDescription = dialogView.findViewById<TextView>(R.id.tvTaskDetailDescription)
         val tvDueDate = dialogView.findViewById<TextView>(R.id.tvTaskDetailDueDate)
-        val tvCategory = dialogView.findViewById<TextView>(R.id.tvTaskDetailCategory)
+        val tvStartTime = dialogView.findViewById<TextView>(R.id.tvTaskDetailStartTime)
+        val tvEndTime = dialogView.findViewById<TextView>(R.id.tvTaskDetailEndTime)
         val tvPriority = dialogView.findViewById<TextView>(R.id.tvTaskDetailPriority)
+        val tvCategory = dialogView.findViewById<TextView>(R.id.tvTaskDetailCategory)
         val btnEdit = dialogView.findViewById<Button>(R.id.btnEditTask)
         val btnDelete = dialogView.findViewById<Button>(R.id.btnDeleteTask)
 
         val dateFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+        // Formatter for LocalTime (start and end times)
+        val timeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault())
 
+        // Set the basic details
         tvTitle.text = task.title
         tvDescription.text = task.description ?: "No description"
         tvDueDate.text = task.dueDate?.let { "Due Date: ${dateFormatter.format(it)}" } ?: "No due date"
-        tvCategory.text = "Category: ${task.category}"
         tvPriority.text = "Priority: ${task.priority}"
+        tvCategory.text = "Category: ${task.category}"
+
+        // Set start time if available
+        tvStartTime.text = task.startTime?.let {
+            "Start Time: ${it.format(timeFormatter)}"
+        } ?: "No start time"
+
+        // Set end time if available
+        tvEndTime.text = task.endTime?.let {
+            "End Time: ${it.format(timeFormatter)}"
+        } ?: "No end time"
 
         // Set priority color
         val priorityColors = mapOf(

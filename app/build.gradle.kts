@@ -31,6 +31,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -45,6 +46,12 @@ android {
     // Specify a Compose Compiler version compatible with Kotlin 1.9.x
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.4"
+    }
+
+    packagingOptions {
+        resources {
+            excludes += "META-INF/DEPENDENCIES"
+        }
     }
 }
 
@@ -84,4 +91,15 @@ dependencies {
 
     implementation("androidx.fragment:fragment-ktx:1.5.7")
     implementation("com.github.Applandeo:Material-Calendar-View:v1.3")
+    implementation("com.google.android.gms:play-services-auth:20.5.0")
+
+    // Google API client for Android
+    implementation("com.google.api-client:google-api-client-android:1.33.2")
+
+    // HTTP client + Jackson for JSON parsing
+    implementation("com.google.http-client:google-http-client-jackson2:1.41.5")
+
+    implementation("com.google.http-client:google-http-client-android:1.41.5")
+
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:1.2.2")
 }

@@ -7,6 +7,7 @@ import kotlinx.coroutines.launch
 
 class TaskViewModel(private val repository: TaskRepository) : ViewModel() {
 
+    // Repository already filters tasks based on userEmail
     val allTasks: LiveData<List<Task>> = repository.allTasks
 
     fun insertTask(task: Task) = viewModelScope.launch {

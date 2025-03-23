@@ -36,6 +36,26 @@
         android:textColor="@color/black"
         android:paddingTop="8dp"/>
 
+    <!-- Start Time -->
+    <TextView
+        android:id="@+id/tvTaskDetailStartTime"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Start Time: --:--"
+        android:textSize="14sp"
+        android:textColor="@color/black"
+        android:paddingTop="8dp"/>
+
+    <!-- End Time -->
+    <TextView
+        android:id="@+id/tvTaskDetailEndTime"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="End Time: --:--"
+        android:textSize="14sp"
+        android:textColor="@color/black"
+        android:paddingTop="8dp"/>
+
     <!-- Priority -->
     <TextView
         android:id="@+id/tvTaskDetailPriority"
@@ -71,7 +91,6 @@
             android:text="Edit"
             android:textColor="@color/white"
             android:backgroundTint="@color/soft_primary"/>
-
 
         <Button
             android:id="@+id/btnDeleteTask"

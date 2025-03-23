@@ -3,6 +3,7 @@ package com.example.taskera.ui
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.content.Intent
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import android.widget.ImageView
@@ -29,6 +30,8 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.navigation.NavigationView
 import com.google.android.material.textfield.TextInputLayout
 import java.text.SimpleDateFormat
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import java.util.*
 
 enum class SortType {
@@ -45,7 +48,8 @@ class MainActivity : AppCompatActivity() {
 
     private val taskViewModel: TaskViewModel by viewModels {
         val database = TaskDatabase.getInstance(this)
-        val repository = TaskRepository(database.taskDao())
+        val currentUserEmail = GoogleSignIn.getLastSignedInAccount(this)?.email ?: ""
+        val repository = TaskRepository(database.taskDao(), currentUserEmail)
         TaskViewModelFactory(repository)
     }
 
@@ -106,6 +110,18 @@ class MainActivity : AppCompatActivity() {
 
             // Recreate the activity to apply theme changes
             recreate()
+        }
+
+        // Logout functionality
+        navView.setNavigationItemSelectedListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.nav_logout -> {
+                    signOutUser() // Call the sign-out function
+                    true
+                }
+                // Handle other items if needed
+                else -> false
+            }
         }
 
         // RecyclerView for displaying tasks
@@ -251,5 +267,17 @@ class MainActivity : AppCompatActivity() {
             SortType.DATE -> tasks.sortedBy { it.dueDate ?: Date(Long.MAX_VALUE) }
         }
         taskAdapter.setData(sortedTasks)
+    }
+
+    private fun signOutUser() {
+        // Configure default Google Sign-In options for logout
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN).build()
+        val googleSignInClient = GoogleSignIn.getClient(this, gso)
+        googleSignInClient.signOut().addOnCompleteListener {
+            // After sign-out, navigate back to ComposeLoginActivity
+            startActivity(Intent(this, ComposeLoginActivity::class.java))
+            finish()
+        }
+        drawerLayout.closeDrawer(GravityCompat.START)
     }
 }

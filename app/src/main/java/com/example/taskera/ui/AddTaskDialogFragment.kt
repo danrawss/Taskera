@@ -5,13 +5,20 @@ import android.app.DatePickerDialog
 import android.app.Dialog
 import android.app.TimePickerDialog
 import android.os.Bundle
+import android.util.Log
 import android.widget.*
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
 import com.example.taskera.R
 import com.example.taskera.data.Task
+import com.example.taskera.utils.CalendarUtils
 import com.example.taskera.viewmodel.TaskViewModel
+import com.example.taskera.utils.combineDateAndTime
 import com.google.android.gms.auth.api.signin.GoogleSignIn
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -123,6 +130,22 @@ class AddTaskDialogFragment : DialogFragment() {
                         userEmail = currentUserEmail
                     )
                     taskViewModel.insertTask(newTask)
+
+                    if (selectedDate != null && selectedStartTime != null && selectedEndTime != null) {
+                        val startMillis = combineDateAndTime(selectedDate!!, selectedStartTime!!)
+                        val endMillis = combineDateAndTime(selectedDate!!, selectedEndTime!!)
+                        lifecycleScope.launch(Dispatchers.IO) {
+                            val eventId = CalendarUtils.createCalendarEvent(
+                                requireContext(),
+                                title,
+                                description, // or any description you want
+                                startMillis,
+                                endMillis
+                            )
+                            Log.d("AddTaskDialog", "Calendar event created with ID: $eventId")
+                            // Optionally, update the task with eventId if needed
+                        }
+                    }
                 }
             }
             .setNegativeButton("Cancel") { dialog, _ ->

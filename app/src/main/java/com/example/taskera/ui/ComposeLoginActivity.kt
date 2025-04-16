@@ -6,10 +6,10 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import com.example.taskera.R
-import com.example.taskera.ui.MainActivity
+import com.example.taskera.ui.components.LoginScreen
 import com.google.android.gms.auth.api.signin.*
 import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.common.api.Scope
 import com.google.android.gms.tasks.Task
 
 class ComposeLoginActivity : ComponentActivity() {
@@ -36,6 +36,7 @@ class ComposeLoginActivity : ComponentActivity() {
         // Configure Google Sign-In (requesting only the user's email)
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestEmail()
+            .requestScopes(Scope("https://www.googleapis.com/auth/calendar"))
             .build()
         googleSignInClient = GoogleSignIn.getClient(this, gso)
 

@@ -13,8 +13,7 @@
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:layout_gravity="start"
-        app:menu="@menu/nav_menu"
-        app:headerLayout="@layout/nav_header"/>
+        app:menu="@menu/nav_menu"/>
 
     <!-- Main Content Layout (Fixed Toolbar inside ConstraintLayout) -->
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -130,17 +129,15 @@
             </androidx.constraintlayout.widget.ConstraintLayout>
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- RecyclerView for Tasks (Below Calendar) -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rvTaskList"
+        <!-- Replace your RecyclerView section with a ComposeView -->
+        <androidx.compose.ui.platform.ComposeView
+            android:id="@+id/composeViewTaskList"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            app:spanCount="2"
-            app:layoutManager="androidx.recyclerview.widget.GridLayoutManager"
             app:layout_constraintTop_toBottomOf="@id/sortDropdownLayout"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"/>
+            app:layout_constraintEnd_toEndOf="parent" />
 
         <!-- Floating Action Button -->
         <com.google.android.material.floatingactionbutton.FloatingActionButton

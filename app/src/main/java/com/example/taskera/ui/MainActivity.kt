@@ -26,12 +26,18 @@ import com.example.taskera.data.TaskDatabase
 import com.example.taskera.repository.TaskRepository
 import com.example.taskera.viewmodel.TaskViewModel
 import com.example.taskera.viewmodel.TaskViewModelFactory
+import com.example.taskera.ui.components.NavHeader
+import com.example.taskera.ui.components.TaskList
+import com.example.taskera.ui.theme.TaskeraTheme
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.navigation.NavigationView
 import com.google.android.material.textfield.TextInputLayout
 import java.text.SimpleDateFormat
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import java.util.*
 
 enum class SortType {
@@ -65,6 +71,27 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // *** MODIFIED: Setup ComposeView for Compose UI content with observed tasks ***
+        val composeView = findViewById<ComposeView>(R.id.composeViewTaskList)
+        composeView.setContent {
+            TaskeraTheme {
+                // Observe tasks from the ViewModel. Provide an initial empty list.
+                val tasks by taskViewModel.allTasks.observeAsState(initial = emptyList())
+
+                // Pass observed tasks to your TaskList composable
+                TaskList(
+                    tasks = tasks,
+                    onItemClick = { task ->
+                        // Handle item click, e.g., navigate to details.
+                    },
+                    onTaskStatusChanged = { task, isChecked ->
+                        // Handle status change.
+                    }
+                )
+            }
+        }
+        // *** END MODIFIED ***
+
         // Setup Toolbar
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         setSupportActionBar(toolbar)
@@ -72,7 +99,16 @@ class MainActivity : AppCompatActivity() {
         // Setup Drawer Layout and NavigationView
         drawerLayout = findViewById(R.id.drawer_layout)
         val navView = findViewById<NavigationView>(R.id.nav_view)
-        navView.bringToFront()
+        val composeHeader = ComposeView(this).apply {
+            layoutParams = DrawerLayout.LayoutParams(
+                DrawerLayout.LayoutParams.MATCH_PARENT,
+                DrawerLayout.LayoutParams.WRAP_CONTENT
+            )
+            setContent {
+                NavHeader()  // Your composable function for the navigation header
+            }
+        }
+        navView.addHeaderView(composeHeader)
 
         // Enable Menu Icon (☰) to Open Navigation Drawer
         val toggle = ActionBarDrawerToggle(this, drawerLayout, toolbar, R.string.nav_open, R.string.nav_close)
@@ -125,7 +161,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         // RecyclerView for displaying tasks
-        val recyclerView = findViewById<RecyclerView>(R.id.rvTaskList)
         val fabAddTask = findViewById<FloatingActionButton>(R.id.fabAddTask)
         val calendarView = findViewById<CalendarView>(R.id.calendarView)
 
@@ -139,9 +174,6 @@ class MainActivity : AppCompatActivity() {
                 taskViewModel.updateTask(updatedTask)
             }
         )
-
-        recyclerView.adapter = taskAdapter
-        recyclerView.layoutManager = GridLayoutManager(this, 2)
 
         // Populate Sorting Dropdown
         val sortDropdown: AutoCompleteTextView = findViewById(R.id.sortDropdown)

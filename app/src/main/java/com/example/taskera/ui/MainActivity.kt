@@ -14,6 +14,7 @@ import androidx.appcompat.widget.SwitchCompat
 import androidx.appcompat.widget.Toolbar
 import androidx.core.view.GravityCompat
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.compose.runtime.LaunchedEffect
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.GridLayoutManager
@@ -38,6 +39,13 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import com.example.taskera.ui.components.TaskDetailDialog
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import com.example.taskera.ui.components.TasksByDateDialog
+import kotlinx.coroutines.flow.collectLatest
 import java.util.*
 
 enum class SortType {
@@ -47,10 +55,12 @@ enum class SortType {
 class MainActivity : AppCompatActivity() {
 
     private lateinit var drawerLayout: DrawerLayout
-    private lateinit var taskAdapter: TaskAdapter
     private var isUserInitiatedClick = true
     private var currentSortType = SortType.DEFAULT
     private val dateFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+
+    private var tasksDateMillis by  mutableStateOf<Long?>(null)
+    private var tasksForDate by mutableStateOf<List<Task>>(emptyList())
 
     private val taskViewModel: TaskViewModel by viewModels {
         val database = TaskDatabase.getInstance(this)
@@ -75,19 +85,63 @@ class MainActivity : AppCompatActivity() {
         val composeView = findViewById<ComposeView>(R.id.composeViewTaskList)
         composeView.setContent {
             TaskeraTheme {
-                // Observe tasks from the ViewModel. Provide an initial empty list.
-                val tasks by taskViewModel.allTasks.observeAsState(initial = emptyList())
+                // 1) observe tasks
+                val tasks by taskViewModel.allTasks.observeAsState(emptyList())
 
-                // Pass observed tasks to your TaskList composable
+                // 2) local UI state
+                var selectedTask by remember { mutableStateOf<Task?>(null) }
+
+                // 3) collect events from VM
+                LaunchedEffect(Unit) {
+                    taskViewModel.events.collectLatest { event ->
+                        when (event) {
+                            TaskViewModel.Event.CloseDialogs -> {
+                                // clear *all* dialog triggers
+                                selectedTask   = null
+                                tasksDateMillis = null
+                            }
+                        }
+                    }
+                }
+
+                // 4) your TaskList
                 TaskList(
                     tasks = tasks,
                     onItemClick = { task ->
-                        // Handle item click, e.g., navigate to details.
+                        selectedTask = task
                     },
-                    onTaskStatusChanged = { task, isChecked ->
-                        // Handle status change.
+                    onTaskStatusChanged = { task, checked ->
+                        taskViewModel.updateTask(task.copy(isCompleted = checked))
                     }
                 )
+
+                // 5) detail‐dialog
+                selectedTask?.let { task ->
+                    TaskDetailDialog(
+                        task = task,
+                        onDismiss = { selectedTask = null },
+                        onEdit    = { toEdit ->
+                            EditTaskDialogFragment(toEdit)
+                                .show(supportFragmentManager, "EditTaskDialog")
+                        },
+                        onDelete  = { toDelete ->
+                            taskViewModel.deleteTask(toDelete)
+                        }
+                    )
+                }
+
+                // 6) date‐filtered dialog
+                tasksDateMillis?.let { millis ->
+                    TasksByDateDialog(
+                        date                = Date(millis),
+                        tasks               = tasksForDate,
+                        onDismiss           = { tasksDateMillis = null },
+                        onItemClick         = { task -> selectedTask = task },
+                        onTaskStatusChanged = { task, checked ->
+                            taskViewModel.updateTask(task.copy(isCompleted = checked))
+                        }
+                    )
+                }
             }
         }
         // *** END MODIFIED ***
@@ -160,20 +214,9 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // RecyclerView for displaying tasks
         val fabAddTask = findViewById<FloatingActionButton>(R.id.fabAddTask)
         val calendarView = findViewById<CalendarView>(R.id.calendarView)
 
-        // Initialize task adapter
-        taskAdapter = TaskAdapter(
-            onItemClick = { task ->
-                val dialog = TaskDetailDialogFragment(task)
-                dialog.show(supportFragmentManager, "TaskDetailDialog")
-            },
-            onTaskStatusChanged = { updatedTask ->
-                taskViewModel.updateTask(updatedTask)
-            }
-        )
 
         // Populate Sorting Dropdown
         val sortDropdown: AutoCompleteTextView = findViewById(R.id.sortDropdown)
@@ -198,14 +241,14 @@ class MainActivity : AppCompatActivity() {
         sortDropdownArrow.setOnClickListener(dropdownClickListener)
 
         // Handle selection
-        sortDropdown.setOnItemClickListener { _, _, position, _ ->
-            sortDropdownArrow.setImageResource(R.drawable.ic_arrow_up)
-            when (position) {
-                0 -> updateSorting(SortType.DEFAULT)
-                1 -> updateSorting(SortType.PRIORITY)
-                2 -> updateSorting(SortType.DATE)
-            }
-        }
+//        sortDropdown.setOnItemClickListener { _, _, position, _ ->
+//            sortDropdownArrow.setImageResource(R.drawable.ic_arrow_up)
+//            when (position) {
+//                0 -> updateSorting(SortType.DEFAULT)
+//                1 -> updateSorting(SortType.PRIORITY)
+//                2 -> updateSorting(SortType.DATE)
+//            }
+//        }
 
         // Detect when dropdown is dismissed and reset the arrow
         sortDropdown.setOnDismissListener {
@@ -214,52 +257,36 @@ class MainActivity : AppCompatActivity() {
 
         // Observe All Tasks Initially
         taskViewModel.allTasks.observe(this, Observer { tasks ->
-            applySorting(tasks)
+            //applySorting(tasks)
             highlightTaskDates(calendarView, tasks)
         })
 
         // Open a dialog with tasks when clicking on a date
         calendarView.setOnDayClickListener { eventDay ->
-            isUserInitiatedClick = true
+            // build the 0:00–23:59 window for the clicked date
+            val cal = eventDay.calendar.apply {
+                set(Calendar.HOUR_OF_DAY,   0)
+                set(Calendar.MINUTE,        0)
+                set(Calendar.SECOND,        0)
+                set(Calendar.MILLISECOND,   0)
+            }
+            val startOfDay = cal.timeInMillis
 
-            val selectedCalendar = eventDay.calendar
-            selectedCalendar.set(Calendar.HOUR_OF_DAY, 0)
-            selectedCalendar.set(Calendar.MINUTE, 0)
-            selectedCalendar.set(Calendar.SECOND, 0)
-            selectedCalendar.set(Calendar.MILLISECOND, 0)
-            val startOfDay = selectedCalendar.timeInMillis
+            cal.apply {
+                set(Calendar.HOUR_OF_DAY,  23)
+                set(Calendar.MINUTE,       59)
+                set(Calendar.SECOND,       59)
+                set(Calendar.MILLISECOND,  999)
+            }
+            val endOfDay = cal.timeInMillis
 
-            selectedCalendar.set(Calendar.HOUR_OF_DAY, 23)
-            selectedCalendar.set(Calendar.MINUTE, 59)
-            selectedCalendar.set(Calendar.SECOND, 59)
-            selectedCalendar.set(Calendar.MILLISECOND, 999)
-            val endOfDay = selectedCalendar.timeInMillis
-
-            taskViewModel.getTasksByDate(startOfDay, endOfDay).removeObservers(this)
-
-            taskViewModel.getTasksByDate(startOfDay, endOfDay).observe(this, Observer { tasks ->
-                val existingDialog = supportFragmentManager.findFragmentByTag("TaskListDialog") as? TaskListDialogFragment
-
-                if (isUserInitiatedClick) {
-                    if (tasks.isNotEmpty()) {
-                        if (existingDialog != null) {
-                            existingDialog.updateTasks(tasks)
-                        } else {
-                            val dialog = TaskListDialogFragment.newInstance(tasks) { updatedTask ->
-                                taskViewModel.updateTask(updatedTask)
-                            }
-                            dialog.show(supportFragmentManager, "TaskListDialog")
-                        }
-                    } else {
-                        existingDialog?.dismiss()
-                    }
-                } else {
-                    if (tasks.isEmpty()) {
-                        existingDialog?.dismiss()
-                    }
+            // observe once and update our Compose state
+            taskViewModel
+                .getTasksByDate(startOfDay, endOfDay)
+                .observe(this) { list ->
+                    tasksForDate    = list
+                    tasksDateMillis = startOfDay
                 }
-                isUserInitiatedClick = false
-            })
         }
 
         // Floating Action Button Click
@@ -280,26 +307,26 @@ class MainActivity : AppCompatActivity() {
         calendarView.setEvents(events)
     }
 
-    private fun updateSorting(sortType: SortType) {
-        currentSortType = sortType
-        taskViewModel.allTasks.value?.let { applySorting(it) }
-    }
+//    private fun updateSorting(sortType: SortType) {
+//        currentSortType = sortType
+//        taskViewModel.allTasks.value?.let { applySorting(it) }
+//    }
 
-    private fun applySorting(tasks: List<Task>) {
-        val sortedTasks = when (currentSortType) {
-            SortType.DEFAULT -> tasks
-            SortType.PRIORITY -> tasks.sortedBy { task ->
-                when (task.priority) {
-                    "High" -> 1
-                    "Medium" -> 2
-                    "Low" -> 3
-                    else -> 4
-                }
-            }
-            SortType.DATE -> tasks.sortedBy { it.dueDate ?: Date(Long.MAX_VALUE) }
-        }
-        taskAdapter.setData(sortedTasks)
-    }
+//    private fun applySorting(tasks: List<Task>) {
+//        val sortedTasks = when (currentSortType) {
+//            SortType.DEFAULT -> tasks
+//            SortType.PRIORITY -> tasks.sortedBy { task ->
+//                when (task.priority) {
+//                    "High" -> 1
+//                    "Medium" -> 2
+//                    "Low" -> 3
+//                    else -> 4
+//                }
+//            }
+//            SortType.DATE -> tasks.sortedBy { it.dueDate ?: Date(Long.MAX_VALUE) }
+//        }
+//        taskAdapter.setData(sortedTasks)
+//    }
 
     private fun signOutUser() {
         // Configure default Google Sign-In options for logout

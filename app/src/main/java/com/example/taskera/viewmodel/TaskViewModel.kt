@@ -1,25 +1,35 @@
 package com.example.taskera.viewmodel
 
+import android.app.usage.UsageEvents.Event
 import androidx.lifecycle.*
 import com.example.taskera.data.Task
 import com.example.taskera.repository.TaskRepository
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 
 class TaskViewModel(private val repository: TaskRepository) : ViewModel() {
+
+    // 1️⃣ Define the event stream
+    private val _events = MutableSharedFlow<Event>()
+    val events = _events.asSharedFlow()
 
     // Repository already filters tasks based on userEmail
     val allTasks: LiveData<List<Task>> = repository.allTasks
 
     fun insertTask(task: Task) = viewModelScope.launch {
         repository.insertTask(task)
+        _events.emit(Event.CloseDialogs)
     }
 
     fun updateTask(task: Task) = viewModelScope.launch {
         repository.updateTask(task)
+        _events.emit(Event.CloseDialogs)
     }
 
     fun deleteTask(task: Task) = viewModelScope.launch {
         repository.deleteTask(task)
+        _events.emit(Event.CloseDialogs)
     }
 
     fun getTaskById(taskId: Int): LiveData<Task> {
@@ -40,5 +50,10 @@ class TaskViewModel(private val repository: TaskRepository) : ViewModel() {
 
     fun updateTaskCompletion(taskId: Int, isCompleted: Boolean) = viewModelScope.launch {
         repository.updateTaskCompletion(taskId, isCompleted)
+    }
+
+    // sealed event type
+    sealed class Event {
+        object CloseDialogs : Event()
     }
 }

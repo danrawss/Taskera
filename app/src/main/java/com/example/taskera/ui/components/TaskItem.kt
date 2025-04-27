@@ -18,7 +18,7 @@ import java.util.*
 fun TaskItem(
     task: Task,
     onItemClick: () -> Unit,
-    onTaskStatusChanged: (Boolean) -> Unit,
+    onTaskStatusChanged: (Task, Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -58,7 +58,7 @@ fun TaskItem(
             // Checkbox for marking task as completed
             Checkbox(
                 checked = task.isCompleted,
-                onCheckedChange = { checked -> onTaskStatusChanged(checked) }
+                onCheckedChange = { checked -> onTaskStatusChanged(task, checked) }
             )
         }
     }

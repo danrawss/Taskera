@@ -18,7 +18,7 @@ fun TaskList(
             TaskItem(
                 task = task,
                 onItemClick = { onItemClick(task) },
-                onTaskStatusChanged = { isChecked -> onTaskStatusChanged(task, isChecked) }
+                onTaskStatusChanged = {_, isChecked -> onTaskStatusChanged(task, isChecked) }
             )
         }
     }

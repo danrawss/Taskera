@@ -107,4 +107,6 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:1.2.2")
 
     implementation("androidx.compose.runtime:runtime-livedata")
+
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.1")
 }

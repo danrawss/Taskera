@@ -1,21 +1,46 @@
 package com.example.taskera.ui.theme
 
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.lightColorScheme
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 
-// Define your color scheme (customize these as needed)
 private val LightColorScheme = lightColorScheme(
-    primary = androidx.compose.ui.graphics.Color(0xFF6200EE),
-    secondary = androidx.compose.ui.graphics.Color(0xFF03DAC6),
-    // ... define additional colors if needed
+    primary            = Color(0xFF6200EE),
+    onPrimary          = Color.White,
+    secondary          = Color(0xFF03DAC6),
+    onSecondary        = Color.Black,
+    surface            = Color.White,
+    onSurface          = Color.Black,
+    background         = Color.White,
+    onBackground       = Color.Black,
+    error              = Color(0xFFB00020),
+    onError            = Color.White
+)
+
+private val DarkColorScheme = darkColorScheme(
+    primary            = Color(0xFFBB86FC),
+    onPrimary          = Color.Black,
+    secondary          = Color(0xFF03DAC6),
+    onSecondary        = Color.Black,
+    surface            = Color(0xFF121212),
+    onSurface          = Color.White,
+    background         = Color(0xFF121212),
+    onBackground       = Color.White,
+    error              = Color(0xFFCF6679),
+    onError            = Color.Black
 )
 
 @Composable
-fun TaskeraTheme(content: @Composable () -> Unit) {
+fun TaskeraTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    content: @Composable () -> Unit
+) {
+    val colors = if (darkTheme) DarkColorScheme else LightColorScheme
+
     MaterialTheme(
-        colorScheme = LightColorScheme,
-        typography = androidx.compose.material3.Typography(),
-        content = content
+        colorScheme = colors,
+        typography  = Typography(),  // keep your default or customize
+        content     = content
     )
 }

@@ -34,6 +34,7 @@ import com.example.taskera.R
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
+    drawerState: DrawerState,
     tasks: List<Task>,
     onItemClick: (Task) -> Unit,
     onTaskStatusChanged: (Task, Boolean) -> Unit,
@@ -62,7 +63,6 @@ fun MainScreen(
     // Pair<clickedDate, Pair<startMillis,endMillis>>
 
     // 4) Drawer state
-    val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope       = rememberCoroutineScope()
 
     ModalNavigationDrawer(
@@ -138,18 +138,12 @@ fun MainScreen(
                             Spacer(Modifier.width(8.dp))
                             Switch(
                                 checked = isDarkMode,
-                                onCheckedChange = {
-                                    onToggleDarkMode(it)
-                                    scope.launch { drawerState.close() }
-                                }
+                                onCheckedChange = { onToggleDarkMode(it) }
                             )
                         }
                     },
                     selected = isDarkMode,
-                    onClick  = {
-                        onToggleDarkMode(!isDarkMode)
-                        scope.launch { drawerState.close() }
-                    },
+                    onClick  = { onToggleDarkMode(!isDarkMode) },
                     icon     = {
                         Icon(
                             painter = painterResource(R.drawable.ic_dark_mode),

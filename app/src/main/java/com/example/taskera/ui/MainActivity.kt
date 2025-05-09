@@ -5,6 +5,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.material3.DrawerState
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.*
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.FragmentActivity
@@ -19,9 +22,12 @@ import com.example.taskera.viewmodel.TaskViewModel
 import com.example.taskera.viewmodel.TaskViewModelFactory
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.example.taskera.ui.TaskListDialogFragment
+import com.example.taskera.ui.components.TaskDialog
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.example.taskera.ui.components.TasksByDateDialog
+import java.util.Date
 
 class MainActivity : AppCompatActivity() {
 
@@ -40,48 +46,44 @@ class MainActivity : AppCompatActivity() {
 
 
         setContent {
-            var isDarkMode by remember { mutableStateOf(initialDark) }
+            var isDarkMode by rememberSaveable { mutableStateOf(initialDark) }
+            var dialogTask   by rememberSaveable { mutableStateOf<Task?>(null) }
+            var isDialogOpen by rememberSaveable { mutableStateOf(false) }
+            val vm: TaskViewModel = viewModel(factory = factory)
+            // track which day was clicked (date + start/end millis)
+            var dateWindow by rememberSaveable { mutableStateOf<Pair<Date, Pair<Long,Long>>?>(null) }
+            val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
+
 
             TaskeraTheme(darkTheme = isDarkMode) {
-                // 3) Obtain ViewModel
-                val vm: TaskViewModel = viewModel(factory = factory)
-
                 // 4) Collect live task list
                 val tasks by vm.allTasks.observeAsState(initial = emptyList<Task>())
 
                 // 5) Render the entire screen
                 MainScreen(
+                    drawerState = drawerState,
                     tasks               = tasks,
                     onItemClick         = { task ->
-                        // show your existing Edit dialog
-                        EditTaskDialogFragment(task)
-                            .show(supportFragmentManager, "EditTask")
+                        dialogTask = task
+                        isDialogOpen = true
                     },
                     onTaskStatusChanged = { task, done ->
                         vm.updateTask(task.copy(isCompleted = done))
                     },
-                    onAddTask           = {
-                        AddTaskDialogFragment()
-                            .show(supportFragmentManager, "AddTask")
+                    onAddTask = {
+                        dialogTask = null
+                        isDialogOpen = true
                     },
-                    onEditTask          = { task ->
-                        EditTaskDialogFragment(task)
-                            .show(supportFragmentManager, "EditTask")
+                    onEditTask = { task ->
+                        dialogTask = task
+                        isDialogOpen = true
                     },
                     onDeleteTask        = { task ->
                         vm.deleteTask(task)
                     },
-                    onDateClick         = { date, start, end ->
-                        vm.getTasksByDate(start, end)
-                            .observe(this@MainActivity) { list ->
-                                TaskListDialogFragment(
-                                    date = date,
-                                    tasks = list,
-                                    onStatusChanged = { task, done ->
-                                        vm.updateTask(task.copy(isCompleted = done))
-                                    }
-                                ).show(supportFragmentManager, "TaskList")
-                            }
+                    onDateClick = { date, start, end ->
+                        // just record the clicked day -> trigger Compose dialog
+                        dateWindow = date to (start to end)
                     },
                     isDarkMode = isDarkMode,
                     onToggleDarkMode = { enabled ->
@@ -110,6 +112,47 @@ class MainActivity : AppCompatActivity() {
                             }
                     }
                 )
+                if (isDialogOpen) {
+                    TaskDialog(
+                        task      = dialogTask,
+                        onDismiss = { isDialogOpen = false },
+                        onSubmit  = { result ->
+                            if (dialogTask == null) {
+                                // “add” mode — supply the signed-in user’s email
+                                val email = GoogleSignIn
+                                    .getLastSignedInAccount(this@MainActivity)
+                                    ?.email.orEmpty()
+                                vm.insertTask(result.copy(userEmail = email))
+                            } else {
+                                // “edit” mode
+                                vm.updateTask(result)
+                            }
+                            isDialogOpen = false
+                        }
+                    )
+                }
+                dateWindow?.let { (date, range) ->
+                    // observe the LiveData for this one window
+                    val tasksForDate by vm
+                        .getTasksByDate(range.first, range.second)
+                        .observeAsState(initial = emptyList())
+
+                    TasksByDateDialog(
+                        date = date,
+                        tasks = tasksForDate,
+                        onDismiss = { dateWindow = null },
+                        onItemClick = { task ->
+                            // e.g. open your TaskDialog for editing
+                            dialogTask   = task
+                            isDialogOpen = true
+                            dateWindow   = null
+                        },
+                        onTaskStatusChanged = { task, done ->
+                            vm.updateTask(task.copy(isCompleted = done))
+                        }
+                    )
+                }
+
             }
         }
     }

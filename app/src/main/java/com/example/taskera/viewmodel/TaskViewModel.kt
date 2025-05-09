@@ -19,17 +19,14 @@ class TaskViewModel(private val repository: TaskRepository) : ViewModel() {
 
     fun insertTask(task: Task) = viewModelScope.launch {
         repository.insertTask(task)
-        _events.emit(Event.CloseDialogs)
     }
 
     fun updateTask(task: Task) = viewModelScope.launch {
         repository.updateTask(task)
-        _events.emit(Event.CloseDialogs)
     }
 
     fun deleteTask(task: Task) = viewModelScope.launch {
         repository.deleteTask(task)
-        _events.emit(Event.CloseDialogs)
     }
 
     fun getTaskById(taskId: Int): LiveData<Task> {

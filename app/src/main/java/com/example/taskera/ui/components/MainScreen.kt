@@ -30,6 +30,12 @@ import com.example.taskera.data.Task
 import java.util.Calendar
 import java.util.*
 import com.example.taskera.R
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.material3.MaterialTheme
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,6 +70,13 @@ fun MainScreen(
 
     // 4) Drawer state
     val scope       = rememberCoroutineScope()
+
+    val cardBg        = MaterialTheme.colorScheme.surfaceVariant
+    val headerBg      = MaterialTheme.colorScheme.primaryContainer
+    val headerLabel   = MaterialTheme.colorScheme.onPrimaryContainer
+    val pagesBg       = MaterialTheme.colorScheme.secondaryContainer
+    val abbreviationsBg = MaterialTheme.colorScheme.secondaryContainer.toArgb()
+    val abbreviationsFg = MaterialTheme.colorScheme.onSecondaryContainer.toArgb()
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -198,46 +211,60 @@ fun MainScreen(
                         .padding(padding)
                 ) {
                     // 1) CalendarView via AndroidView
-                    AndroidView<ApplandeoCalendarView>(
-                        factory = { ctx: Context ->
-                            // now this unambiguously constructs Applandeo's view
-                            ApplandeoCalendarView(ctx, /* attrs = */ null).apply {
-                                // these methods exist here:
-                                AppearanceUtils.setHeaderColor(this, ctx.getColor(R.color.primary))
-                                AppearanceUtils.setPagesColor(this, ctx.getColor(R.color.soft_primary))
-                            }
-                        },
-                        update = { cv: ApplandeoCalendarView ->
-                            val events = tasks.mapNotNull { t ->
-                                t.dueDate?.let {
-                                    val cal = Calendar.getInstance().apply { time = it }
-                                    EventDay(cal, R.drawable.ic_task_marker)
-                                }
-                            }
-                            cv.setEvents(events)
-
-                            cv.setOnDayClickListener { eventDay ->
-                                val cal = eventDay.calendar.apply {
-                                    set(Calendar.HOUR_OF_DAY,   0)
-                                    set(Calendar.MINUTE,        0)
-                                    set(Calendar.SECOND,        0)
-                                    set(Calendar.MILLISECOND,   0)
-                                }
-                                val start = cal.timeInMillis
-                                cal.apply {
-                                    set(Calendar.HOUR_OF_DAY,  23)
-                                    set(Calendar.MINUTE,       59)
-                                    set(Calendar.SECOND,       59)
-                                    set(Calendar.MILLISECOND,  999)
-                                }
-                                val end = cal.timeInMillis
-                                onDateClick(eventDay.calendar.time, start, end)
-                            }
-                        },
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .wrapContentHeight()
-                    )
+                            .padding(horizontal = 16.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        AndroidView<ApplandeoCalendarView>(
+                            factory = { ctx ->
+                                ApplandeoCalendarView(ctx, null).apply {
+                                    AppearanceUtils.setHeaderColor(       this, headerBg.toArgb())
+                                    AppearanceUtils.setHeaderLabelColor(  this, headerLabel.toArgb())
+                                    AppearanceUtils.setPagesColor(        this, pagesBg.toArgb())
+                                    //  Week‐day row
+                                    AppearanceUtils.setAbbreviationsBarColor(this, abbreviationsBg)
+                                    AppearanceUtils.setAbbreviationsLabelsColor(this, abbreviationsFg)
+                                }
+                            },
+                            update = { cv: ApplandeoCalendarView ->
+                                val events = tasks.mapNotNull { t ->
+                                    t.dueDate?.let {
+                                        val cal = Calendar.getInstance().apply { time = it }
+                                        EventDay(cal, R.drawable.ic_task_marker)
+                                    }
+                                }
+                                cv.setEvents(events)
+
+                                cv.setOnDayClickListener { eventDay ->
+                                    val cal = eventDay.calendar.apply {
+                                        set(Calendar.HOUR_OF_DAY, 0)
+                                        set(Calendar.MINUTE, 0)
+                                        set(Calendar.SECOND, 0)
+                                        set(Calendar.MILLISECOND, 0)
+                                    }
+                                    val start = cal.timeInMillis
+                                    cal.apply {
+                                        set(Calendar.HOUR_OF_DAY, 23)
+                                        set(Calendar.MINUTE, 59)
+                                        set(Calendar.SECOND, 59)
+                                        set(Calendar.MILLISECOND, 999)
+                                    }
+                                    val end = cal.timeInMillis
+                                    onDateClick(eventDay.calendar.time, start, end)
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp)
+                        )
+                    }
 
                     Spacer(Modifier.height(8.dp))
 

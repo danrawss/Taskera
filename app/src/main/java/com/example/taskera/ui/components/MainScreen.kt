@@ -35,12 +35,14 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.material3.MaterialTheme
+import com.example.taskera.viewmodel.Stats
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     drawerState: DrawerState,
+    onDashboard: () -> Unit,
     tasks: List<Task>,
     onItemClick: (Task) -> Unit,
     onTaskStatusChanged: (Task, Boolean) -> Unit,
@@ -88,6 +90,18 @@ fun MainScreen(
                     modifier = Modifier.padding(16.dp)
                 )
                 Divider()
+
+                // Dashboard
+                NavigationDrawerItem(
+                    label    = { Text("Dashboard") },
+                    selected = false,
+                    onClick  = {
+                        onDashboard()
+                        scope.launch { drawerState.close() }
+                        },
+                    icon     = { Icon(painterResource(R.drawable.ic_dashboard), null) },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
 
                 // Home
                 NavigationDrawerItem(
@@ -316,7 +330,6 @@ fun MainScreen(
                         onTaskStatusChanged = onTaskStatusChanged
                     )
                 }
-
                 // — detail dialog —
                 selectedTask?.let { task ->
                     TaskDetailDialog(

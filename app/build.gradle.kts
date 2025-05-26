@@ -59,6 +59,7 @@ android {
 dependencies {
     // Core
     implementation(libs.androidx.core.ktx)
+    implementation("androidx.core:core:1.10.1")
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.constraintlayout)
@@ -111,4 +112,13 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.1")
 
     implementation("androidx.navigation:navigation-compose:2.6.0")
+
+    // WorkManager
+    implementation("androidx.work:work-runtime-ktx:2.8.1")
+
+    // DataStore for settings
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
+
+    // Compose integration
+    implementation("androidx.datastore:datastore-preferences-core:1.0.0")
 }

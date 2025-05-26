@@ -17,5 +17,6 @@ data class Task(
     val priority: String = "Low", // "Low", "Medium", or "High"
     val category: String = "General", // e.g. "Work", "Personal"
     val isCompleted: Boolean = false,
-    val userEmail: String
+    val userEmail: String,
+    val leadTimeMin: Int? = null  // minutes before due; null = use default
 )

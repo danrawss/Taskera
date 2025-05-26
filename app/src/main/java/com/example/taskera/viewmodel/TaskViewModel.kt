@@ -3,29 +3,47 @@ package com.example.taskera.viewmodel
 import androidx.lifecycle.*
 import com.example.taskera.data.Task
 import com.example.taskera.repository.TaskRepository
-import com.example.taskera.viewmodel.Stats
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import java.util.Calendar
 import kotlinx.coroutines.launch
 import androidx.lifecycle.map
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.workDataOf
+import com.example.taskera.data.NotificationPrefs
+import androidx.work.ExistingWorkPolicy
+import kotlinx.coroutines.flow.first
+import java.time.LocalTime
+import java.util.concurrent.TimeUnit
+import com.example.taskera.utils.combineDateAndTime
+import com.example.taskera.workers.ReminderWorker
 import java.time.*
-import java.time.temporal.ChronoField
-import java.time.temporal.ChronoUnit
 
-class TaskViewModel(private val repository: TaskRepository) : ViewModel() {
+
+class TaskViewModel(
+    application: Application,
+    private val repository: TaskRepository)
+    : AndroidViewModel(application) {
+
+    private val context = getApplication<Application>()
 
     // Repository already filters tasks based on userEmail
     val allTasks: LiveData<List<Task>> = repository.allTasks
 
     fun insertTask(task: Task) = viewModelScope.launch {
         repository.insertTask(task)
+        scheduleReminder(task)
     }
 
     fun updateTask(task: Task) = viewModelScope.launch {
         repository.updateTask(task)
+        scheduleReminder(task)
     }
 
     fun deleteTask(task: Task) = viewModelScope.launch {
         repository.deleteTask(task)
+        cancelReminder(task)
     }
 
     fun getTaskById(taskId: Int): LiveData<Task> {
@@ -130,6 +148,40 @@ class TaskViewModel(private val repository: TaskRepository) : ViewModel() {
                     date to (counts[date] ?: 0)
                 }
             }
+
+    // ─── scheduling helpers ─────────────────────────────────────────────────────
+    private suspend fun scheduleReminder(task: Task) {
+        val workName = "reminder-${task.id}"
+        val wm = WorkManager.getInstance(context)
+        // cancel any existing
+        wm.cancelUniqueWork(workName)
+
+        // read prefs
+        val enabled = NotificationPrefs.isEnabled(context).first()
+        val leadMin = task.leadTimeMin
+        ?: NotificationPrefs.defaultLeadMin(context).first()
+
+        if (!enabled || task.isCompleted || task.dueDate == null || leadMin == null) return
+        // combine date + time into millis (use your util)
+        val dueMillis = combineDateAndTime(task.dueDate, task.startTime ?: LocalTime.MIDNIGHT)
+        val trigger   = (dueMillis - leadMin * 60_000).coerceAtLeast(0L)
+
+        val work = OneTimeWorkRequestBuilder<ReminderWorker>()
+        .setInitialDelay(trigger - System.currentTimeMillis(), TimeUnit.MILLISECONDS)
+        .setInputData(workDataOf(
+            "taskId" to task.id,
+            "title"  to task.title
+                    ))
+        .build()
+
+        wm.enqueueUniqueWork(workName, ExistingWorkPolicy.REPLACE, work)
+        }
+
+    private fun cancelReminder(task: Task) {
+        WorkManager
+        .getInstance(context)
+        .cancelUniqueWork("reminder-${task.id}")
+        }
 
     // sealed event type
     sealed class Event {

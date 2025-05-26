@@ -5,7 +5,7 @@ import androidx.room.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
-@Database(entities = [Task::class], version = 2, exportSchema = false)
+@Database(entities = [Task::class], version = 3, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class TaskDatabase : RoomDatabase() {
 

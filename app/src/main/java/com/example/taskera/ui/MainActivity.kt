@@ -5,6 +5,11 @@ import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
+import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
@@ -38,17 +43,40 @@ import androidx.navigation.compose.composable
 import com.example.taskera.ui.components.DashboardScreen
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import com.example.taskera.ui.components.NotificationSettingsScreen
+import com.example.taskera.viewmodel.SettingsViewModel
+import com.example.taskera.viewmodel.SettingsViewModelFactory
+import java.time.Duration
 
 class MainActivity : AppCompatActivity() {
+    private val POST_NOTIF_REQ = 1001
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    this, Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                    POST_NOTIF_REQ
+                )
+            }
+        }
 
         // 1) Prepare ViewModel factory
         val db      = TaskDatabase.getInstance(this)
         val email   = GoogleSignIn.getLastSignedInAccount(this)?.email.orEmpty()
         val repo    = TaskRepository(db.taskDao(), email)
-        val factory = TaskViewModelFactory(repo)
+        val factory = TaskViewModelFactory(
+            application = application,
+            repository  = TaskRepository(db.taskDao(), email)
+        )
 
         // 2) Load saved dark-mode flag
         val prefs       = getSharedPreferences("TaskeraPrefs", MODE_PRIVATE)
@@ -70,6 +98,13 @@ class MainActivity : AppCompatActivity() {
 
             val weeklyStats by vm.weeklyCategoryStats.observeAsState(emptyMap())
             val trendData  by vm.oneWeekTrend.observeAsState(emptyList())
+
+            // ➊ Get your SettingsViewModel and read default lead-minutes
+            val settingsFactory = SettingsViewModelFactory(composeContext)
+            val settingsVm: SettingsViewModel = viewModel(factory = settingsFactory)
+            val defaultLeadMin by settingsVm.defaultLeadMin.observeAsState(initial = 30)
+            // convert to a Duration
+            val defaultLeadDuration = Duration.ofMinutes(defaultLeadMin.toLong())
 
             TaskeraTheme(darkTheme = isDarkMode) {
                 // 4) Collect live task list
@@ -121,7 +156,7 @@ class MainActivity : AppCompatActivity() {
 
                             },
                             onSettings = {
-
+                                navController.navigate("settings")
                             },
                             onLogout = {
                                 // sign out and return to login
@@ -142,8 +177,9 @@ class MainActivity : AppCompatActivity() {
                         if (isDialogOpen) {
                             TaskDialog(
                                 task = dialogTask,
+                                defaultLead      = defaultLeadDuration,
                                 onDismiss = { isDialogOpen = false },
-                                onSubmit = { result ->
+                                onSubmit = { result, leadDuration ->
                                     if (dialogTask == null) {
                                         val email = GoogleSignIn
                                             .getLastSignedInAccount(composeContext)
@@ -170,6 +206,15 @@ class MainActivity : AppCompatActivity() {
                                                     endMillis
                                                 )
                                             }
+                                        }
+
+                                        // attach the per-task override when saving:
+                                        val saved = result.copy(leadTimeMin = leadDuration.toMinutes().toInt())
+                                        if (dialogTask == null) {
+                                            vm.insertTask(saved)
+                                            // … calendar event …
+                                        } else {
+                                            vm.updateTask(saved)
                                         }
                                     } else {
                                         // Edit mode
@@ -210,6 +255,14 @@ class MainActivity : AppCompatActivity() {
                             oneWeekTrend      = trendData,
                             onClose = { navController.popBackStack() },
                             modifier = Modifier.fillMaxSize()
+                        )
+                    }
+
+                    // SETTINGS SCREEN
+                    composable("settings") {
+                        NotificationSettingsScreen(
+                            viewModel = settingsVm,
+                            onClose = { navController.popBackStack() }
                         )
                     }
                 }

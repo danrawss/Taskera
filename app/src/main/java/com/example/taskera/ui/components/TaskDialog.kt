@@ -16,18 +16,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.example.taskera.data.NotificationPrefs.defaultLeadMin
 import com.example.taskera.data.Task
 import java.text.SimpleDateFormat
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.*
+import java.time.Duration
+import androidx.compose.runtime.getValue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskDialog(
     task: Task? = null,
+    defaultLead: Duration,
     onDismiss: () -> Unit,
-    onSubmit: (Task) -> Unit
+    onSubmit: (Task, Duration) -> Unit
 ) {
     // Prepare a working copy (if editing) or defaults (if adding)
     val isEdit = task != null
@@ -43,6 +47,14 @@ fun TaskDialog(
     var endTime     by rememberSaveable { mutableStateOf(task?.endTime) }
     var priority    by rememberSaveable { mutableStateOf(task?.priority ?: "Low") }
     var category    by rememberSaveable { mutableStateOf(task?.category ?: "Personal") }
+
+    var leadDuration by rememberSaveable {
+        mutableStateOf(
+            task?.leadTimeMin
+                ?.let { Duration.ofMinutes(it.toLong()) }
+                ?: defaultLead
+        )
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -135,6 +147,22 @@ fun TaskDialog(
                     selected = category,
                     onSelect = { category = it }
                 )
+
+                Spacer(Modifier.height(8.dp))
+                // ➌ The new LeadTimeDropdown
+                Text("Reminder lead time", style = MaterialTheme.typography.bodySmall)
+                LeadTimeDropdown(
+                    options            = listOf(
+                        Duration.ofMinutes(5),
+                        Duration.ofMinutes(10),
+                        Duration.ofMinutes(15),
+                        Duration.ofMinutes(30),
+                        Duration.ofHours(1)
+                    ),
+                    selected           = leadDuration,
+                    includeNoReminder  = true,
+                    onSelect           = { leadDuration = it }
+                )
             }
         },
         confirmButton = {
@@ -160,7 +188,7 @@ fun TaskDialog(
                             category    = category,
                             userEmail   = "" // fill with current user
                         )
-                        onSubmit(result)
+                        onSubmit(result, leadDuration)
                         onDismiss()
                     }
                 }

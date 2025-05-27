@@ -154,36 +154,47 @@ class TaskViewModel(
     private suspend fun scheduleReminder(task: Task) {
         val workName = "reminder-${task.id}"
         val wm = WorkManager.getInstance(context)
+
         // cancel any existing
         wm.cancelUniqueWork(workName)
 
         // read prefs
         val enabled = NotificationPrefs.isEnabled(context).first()
         val leadMin = task.leadTimeMin
-        ?: NotificationPrefs.defaultLeadMin(context).first()
+            ?: NotificationPrefs.defaultLeadMin(context).first()
 
         if (!enabled || task.isCompleted || task.dueDate == null) {
             Log.d("Reminders", "Skipping scheduling for task ${task.id}: " +
                     "enabled=$enabled, completed=${task.isCompleted}, dueDate=${task.dueDate}")
             return
         }
-        // combine date + time into millis (use your util)
-        val dueMillis = combineDateAndTime(task.dueDate, task.startTime ?: LocalTime.MIDNIGHT)
-        val trigger   = (dueMillis - leadMin * 60_000).coerceAtLeast(0L)
-        val delay     = trigger - System.currentTimeMillis()
 
+        // combine date + time into millis
+        val dueMillis = combineDateAndTime(task.dueDate, task.startTime ?: LocalTime.MIDNIGHT)
+        val triggerAt = dueMillis - leadMin * 60_000L
+        val now       = System.currentTimeMillis()
+
+        // Only schedule if trigger is still in the future
+        if (triggerAt <= now) {
+            Log.d("Reminders", "Not scheduling past reminder for task ${task.id} (triggerAt=$triggerAt, now=$now)")
+            return
+        }
+
+        val delay = triggerAt - now
         Log.d("Reminders", "Scheduling reminder for task ${task.id} in $delay ms (lead $leadMin min)")
 
         val work = OneTimeWorkRequestBuilder<ReminderWorker>()
-        .setInitialDelay(trigger - System.currentTimeMillis(), TimeUnit.MILLISECONDS)
-        .setInputData(workDataOf(
-            "taskId" to task.id,
-            "title"  to task.title
-                    ))
-        .build()
+            .setInitialDelay(delay, TimeUnit.MILLISECONDS)
+            .setInputData(
+                workDataOf(
+                    "taskId" to task.id,
+                    "title"  to task.title
+                )
+            )
+            .build()
 
         wm.enqueueUniqueWork(workName, ExistingWorkPolicy.REPLACE, work)
-        }
+    }
 
     private fun cancelReminder(task: Task) {
         WorkManager

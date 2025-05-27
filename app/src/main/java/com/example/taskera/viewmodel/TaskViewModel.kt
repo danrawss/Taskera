@@ -4,6 +4,7 @@ import androidx.lifecycle.*
 import com.example.taskera.data.Task
 import com.example.taskera.repository.TaskRepository
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import java.util.Calendar
 import kotlinx.coroutines.launch
@@ -161,10 +162,17 @@ class TaskViewModel(
         val leadMin = task.leadTimeMin
         ?: NotificationPrefs.defaultLeadMin(context).first()
 
-        if (!enabled || task.isCompleted || task.dueDate == null || leadMin == null) return
+        if (!enabled || task.isCompleted || task.dueDate == null) {
+            Log.d("Reminders", "Skipping scheduling for task ${task.id}: " +
+                    "enabled=$enabled, completed=${task.isCompleted}, dueDate=${task.dueDate}")
+            return
+        }
         // combine date + time into millis (use your util)
         val dueMillis = combineDateAndTime(task.dueDate, task.startTime ?: LocalTime.MIDNIGHT)
         val trigger   = (dueMillis - leadMin * 60_000).coerceAtLeast(0L)
+        val delay     = trigger - System.currentTimeMillis()
+
+        Log.d("Reminders", "Scheduling reminder for task ${task.id} in $delay ms (lead $leadMin min)")
 
         val work = OneTimeWorkRequestBuilder<ReminderWorker>()
         .setInitialDelay(trigger - System.currentTimeMillis(), TimeUnit.MILLISECONDS)

@@ -177,7 +177,8 @@ fun TaskDialog(
                             startTime   = startTime,
                             endTime     = endTime,
                             priority    = priority,
-                            category    = category
+                            category    = category,
+                            leadTimeMin = leadDuration.toMinutes().toInt()
                         ) ?: Task(
                             title       = title,
                             description = description.takeIf { it.isNotBlank() },
@@ -186,7 +187,8 @@ fun TaskDialog(
                             endTime     = endTime,
                             priority    = priority,
                             category    = category,
-                            userEmail   = "" // fill with current user
+                            userEmail   = "", // fill with current user
+                            leadTimeMin = leadDuration.toMinutes().toInt()
                         )
                         onSubmit(result, leadDuration)
                         onDismiss()

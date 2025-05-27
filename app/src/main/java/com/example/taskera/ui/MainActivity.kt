@@ -55,6 +55,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        createNotificationChannel()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(
@@ -84,7 +85,7 @@ class MainActivity : AppCompatActivity() {
 
         setContent {
             var isDarkMode by rememberSaveable { mutableStateOf(initialDark) }
-            var dialogTask   by rememberSaveable { mutableStateOf<Task?>(null) }
+            var dialogTask   by remember { mutableStateOf<Task?>(null) }
             var isDialogOpen by rememberSaveable { mutableStateOf(false) }
             val vm: TaskViewModel = viewModel(factory = factory)
             // track which day was clicked (date + start/end millis)
@@ -267,6 +268,22 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
+        }
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channelId   = "reminders"
+            val channelName = "Task Reminders"
+            val channelDesc = "Notifications for upcoming task reminders"
+            val importance  = NotificationManager.IMPORTANCE_HIGH
+
+            val channel = NotificationChannel(channelId, channelName, importance).apply {
+                description = channelDesc
+            }
+
+            val manager = getSystemService(NotificationManager::class.java)
+            manager.createNotificationChannel(channel)
         }
     }
 }

@@ -40,7 +40,7 @@ fun TaskeraTheme(
 
     MaterialTheme(
         colorScheme = colors,
-        typography  = Typography(),  // keep your default or customize
+        typography  = Typography(),
         content     = content
     )
 }

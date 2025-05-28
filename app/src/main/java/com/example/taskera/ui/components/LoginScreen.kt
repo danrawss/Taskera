@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun LoginScreen(onGoogleSignInClick: () -> Unit) {
-    // Material 3 Theme
     MaterialTheme {
         Box(
             modifier = Modifier
@@ -34,9 +33,7 @@ fun LoginScreen(onGoogleSignInClick: () -> Unit) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = "Welcome to Taskera",
-                    // Material 3 doesn't have "h5"; pick a suitable style (e.g. titleLarge)
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                    // M3 uses "colorScheme" instead of "colors"
                     color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.padding(bottom = 24.dp)
                 )
@@ -50,7 +47,6 @@ fun LoginScreen(onGoogleSignInClick: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // M3 Button
                 Button(
                     onClick = onGoogleSignInClick,
                     modifier = Modifier.fillMaxWidth(0.8f),

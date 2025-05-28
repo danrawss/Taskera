@@ -8,7 +8,6 @@ import androidx.lifecycle.viewModelScope
 import com.example.taskera.data.NotificationPrefs
 import androidx.datastore.preferences.core.edit
 import kotlinx.coroutines.launch
-import androidx.datastore.preferences.core.Preferences
 import com.example.taskera.data.dataStore
 
 class SettingsViewModel(private val context: Context) : ViewModel() {

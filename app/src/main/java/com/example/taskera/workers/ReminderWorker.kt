@@ -20,7 +20,7 @@ class ReminderWorker(
         val taskId = inputData.getInt("taskId", -1)
         val title  = inputData.getString("title") ?: "Task Reminder"
 
-        // ➊ Create an Intent to open MainActivity
+        // Create an Intent to open MainActivity
         val launchIntent = Intent(applicationContext, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
@@ -31,17 +31,17 @@ class ReminderWorker(
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        // ➋ Build the notification, attaching the PendingIntent
+        // Build the notification, attaching the PendingIntent
         val notification = NotificationCompat.Builder(applicationContext, "reminders")
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("Upcoming Task")
             .setContentText(title)
-            .setContentIntent(pendingLaunch)          // ← tap action here
+            .setContentIntent(pendingLaunch)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .build()
 
-        // ➌ Show it
+        // Show it
         NotificationManagerCompat
             .from(applicationContext)
             .notify(taskId, notification)

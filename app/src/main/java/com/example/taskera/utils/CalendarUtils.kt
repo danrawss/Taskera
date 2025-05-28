@@ -12,9 +12,8 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import java.util.*
 
 object CalendarUtils {
-    /**
-     * Obtain a Calendar service instance using the currently signed-in account.
-     */
+
+    // Obtain a Calendar service instance using the currently signed-in account.
     fun getCalendarService(context: Context): Calendar? {
         val account = GoogleSignIn.getLastSignedInAccount(context) ?: return null
 
@@ -70,48 +69,7 @@ object CalendarUtils {
 
         return try {
             val createdEvent = service.events().insert("primary", event).execute()
-            createdEvent.id // Return the created event's ID
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
-    }
-
-    /**
-     * Updates an existing calendar event identified by eventId with new details.
-     * Returns the updated event ID if successful, or null otherwise.
-     */
-    fun updateCalendarEvent(
-        context: Context,
-        eventId: String,
-        title: String,
-        description: String,
-        startMillis: Long,
-        endMillis: Long
-    ): String? {
-        val service = getCalendarService(context) ?: return null
-
-        // Create an event object with the new details
-        val event = Event().apply {
-            summary = title
-            this.description = description
-        }
-
-        val timeZone = TimeZone.getDefault().id
-
-        val startDateTime = EventDateTime()
-            .setDateTime(DateTime(startMillis))
-            .setTimeZone(timeZone)
-        event.start = startDateTime
-
-        val endDateTime = EventDateTime()
-            .setDateTime(DateTime(endMillis))
-            .setTimeZone(timeZone)
-        event.end = endDateTime
-
-        return try {
-            val updatedEvent = service.events().update("primary", eventId, event).execute()
-            updatedEvent.id
+            createdEvent.id
         } catch (e: Exception) {
             e.printStackTrace()
             null

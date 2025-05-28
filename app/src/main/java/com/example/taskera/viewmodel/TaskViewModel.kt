@@ -94,7 +94,7 @@ class TaskViewModel(
             )
         }
 
-    // ─── ➊ Helpers to compute epoch millis for start/end of a LocalDate ────────────────────
+    // Helpers to compute epoch millis for start/end of a LocalDate
     private fun LocalDate.startOfDayMillis(): Long =
         atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
@@ -109,7 +109,7 @@ class TaskViewModel(
         startMillis to endMillis
     }
 
-    // ─── ➋ Weekly categories: Tasks due from Monday through Sunday of current week ─────────
+    // Weekly categories: Tasks due from Monday through Sunday of current week
     val weeklyCategoryStats: LiveData<Map<String, Int>> =
         repository
             .getTasksByDate(
@@ -121,18 +121,18 @@ class TaskViewModel(
                     .eachCount()
             }
 
-    // ─── ➌ 7-day trend: count of tasks *due* on each of the last 7 days ─────────────────
+    // 7-day trend: count of tasks *due* on each of the last 7 days
     val oneWeekTrend: LiveData<List<Pair<LocalDate, Int>>> =
         repository
             .getTasksByDate(
-                // compute these once in your todayWindow or similar helper
+                // Compute these once in your todayWindow or similar helper
                 oneWeekWindow.first,
                 oneWeekWindow.second
             )
             .map { list ->
                 val today = LocalDate.now()
                 val startDate = today.minusDays(6)
-                // group tasks by their due-date
+                // Group tasks by their due-date
                 val counts: Map<LocalDate, Int> = list
                     .mapNotNull {
                         it.dueDate
@@ -143,22 +143,22 @@ class TaskViewModel(
                     .groupingBy { it }
                     .eachCount()
 
-                // produce exactly 7 days with zero-fill
+                // Produce exactly 7 days with zero-fill
                 (0..6).map { offset ->
                     val date = startDate.plusDays(offset.toLong())
                     date to (counts[date] ?: 0)
                 }
             }
 
-    // ─── scheduling helpers ─────────────────────────────────────────────────────
+    // Scheduling helpers
     private suspend fun scheduleReminder(task: Task) {
         val workName = "reminder-${task.id}"
         val wm = WorkManager.getInstance(context)
 
-        // cancel any existing
+        // Cancel any existing
         wm.cancelUniqueWork(workName)
 
-        // read prefs
+        // Read prefs
         val enabled = NotificationPrefs.isEnabled(context).first()
         val leadMin = task.leadTimeMin
             ?: NotificationPrefs.defaultLeadMin(context).first()
@@ -169,7 +169,7 @@ class TaskViewModel(
             return
         }
 
-        // combine date + time into millis
+        // Combine date + time into millis
         val dueMillis = combineDateAndTime(task.dueDate, task.startTime ?: LocalTime.MIDNIGHT)
         val triggerAt = dueMillis - leadMin * 60_000L
         val now       = System.currentTimeMillis()
@@ -202,7 +202,7 @@ class TaskViewModel(
         .cancelUniqueWork("reminder-${task.id}")
         }
 
-    // sealed event type
+    // Sealed event type
     sealed class Event {
         object CloseDialogs : Event()
     }

@@ -31,13 +31,14 @@ import androidx.compose.material3.MaterialTheme
 import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.speech.RecognizerIntent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
-
+import androidx.core.content.ContextCompat
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,30 +60,23 @@ fun MainScreen(
     onLogout: () -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
-    // 1) UI state for sorting
+    // UI State
     var sortExpanded by remember { mutableStateOf(false) }
     var sortSelection by remember { mutableStateOf("Default") }
     val sortOptions = listOf("Default", "Priority", "Due Date")
 
-    // 2) State for which task is selected in the detail‐dialog
     var selectedTask by remember { mutableStateOf<Task?>(null) }
 
-    // 3) State for date‐filtered dialog
-    var tasksForDate by remember { mutableStateOf<List<Task>>(emptyList()) }
-    var currentDateWindow by remember { mutableStateOf<Pair<Date, Pair<Long, Long>>?>(null) }
-    // Pair<clickedDate, Pair<startMillis,endMillis>>
-
-    // 4) Drawer state
-    val scope       = rememberCoroutineScope()
-
-    val headerBg      = MaterialTheme.colorScheme.primaryContainer
-    val headerLabel   = MaterialTheme.colorScheme.onPrimaryContainer
-    val pagesBg       = MaterialTheme.colorScheme.secondaryContainer
-    val abbreviationsBg = MaterialTheme.colorScheme.secondaryContainer.toArgb()
+    // Theme Colors
+    val headerBg        = MaterialTheme.colorScheme.primaryContainer
+    val headerLabel     = MaterialTheme.colorScheme.onPrimaryContainer
+    val pagesBg         = MaterialTheme.colorScheme.secondaryContainer
+    val abbreviationsBg = pagesBg.toArgb()
     val abbreviationsFg = MaterialTheme.colorScheme.onSecondaryContainer.toArgb()
 
-    // ➊ Ask the user for MIC permission when the screen appears
+    // Microphone Permission
     val audioPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -91,17 +85,17 @@ fun MainScreen(
         }
     }
     LaunchedEffect(Unit) {
-        audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
+            != PackageManager.PERMISSION_GRANTED) {
+            audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
     }
 
-    // ➋ Speech‐recognition launcher
+    // Speech Recognition Setup
     val voiceLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        // ① grab data into a local val
         val intent = result.data
-
-        // ② now kotlin knows `intent` is stable
         if (result.resultCode == Activity.RESULT_OK && intent != null) {
             val spoken = intent
                 .getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
@@ -111,9 +105,9 @@ fun MainScreen(
                 .orEmpty()
 
             when {
-                "add task"    in spoken -> onAddTask()
-                "settings"    in spoken -> onSettings()
-                "dashboard"   in spoken -> onDashboard()
+                "add task"  in spoken -> onAddTask()
+                "settings"  in spoken -> onSettings()
+                "dashboard" in spoken -> onDashboard()
                 else -> Toast
                     .makeText(context, "Sorry, I didn’t catch that.", Toast.LENGTH_SHORT)
                     .show()
@@ -121,7 +115,7 @@ fun MainScreen(
         }
     }
 
-    // ➌ Build the intent once
+    // Build the speech intent once
     val speechIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
         putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
         putExtra(RecognizerIntent.EXTRA_PROMPT, "Say: Add task, open settings, or show dashboard")
@@ -138,19 +132,18 @@ fun MainScreen(
                 )
                 Divider()
 
-                // Dashboard
+                // Drawer items
                 NavigationDrawerItem(
                     label    = { Text("Dashboard") },
                     selected = false,
                     onClick  = {
                         onDashboard()
                         scope.launch { drawerState.close() }
-                        },
+                    },
                     icon     = { Icon(painterResource(R.drawable.ic_dashboard), null) },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
 
-                // Home
                 NavigationDrawerItem(
                     label    = { Text("Home") },
                     selected = false,
@@ -168,7 +161,6 @@ fun MainScreen(
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
 
-                // Account Info
                 NavigationDrawerItem(
                     label    = { Text("Account Info") },
                     selected = false,
@@ -186,7 +178,6 @@ fun MainScreen(
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
 
-                // Settings
                 NavigationDrawerItem(
                     label    = { Text("Settings") },
                     selected = false,
@@ -204,7 +195,7 @@ fun MainScreen(
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
 
-                // Dark Mode Toggle
+                // Dark Mode toggle in drawer
                 NavigationDrawerItem(
                     label = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -228,7 +219,6 @@ fun MainScreen(
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
 
-                // Logout
                 NavigationDrawerItem(
                     label    = { Text("Logout") },
                     selected = false,
@@ -272,7 +262,7 @@ fun MainScreen(
                             .fillMaxSize()
                             .padding(padding)
                     ) {
-                        // 1) CalendarView via AndroidView
+                        // Calendar View
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -288,23 +278,14 @@ fun MainScreen(
                                 factory = { ctx ->
                                     ApplandeoCalendarView(ctx, null).apply {
                                         AppearanceUtils.setHeaderColor(this, headerBg.toArgb())
-                                        AppearanceUtils.setHeaderLabelColor(
-                                            this,
-                                            headerLabel.toArgb()
-                                        )
+                                        AppearanceUtils.setHeaderLabelColor(this, headerLabel.toArgb())
                                         AppearanceUtils.setPagesColor(this, pagesBg.toArgb())
-                                        //  Week‐day row
-                                        AppearanceUtils.setAbbreviationsBarColor(
-                                            this,
-                                            abbreviationsBg
-                                        )
-                                        AppearanceUtils.setAbbreviationsLabelsColor(
-                                            this,
-                                            abbreviationsFg
-                                        )
+                                        AppearanceUtils.setAbbreviationsBarColor(this, abbreviationsBg)
+                                        AppearanceUtils.setAbbreviationsLabelsColor(this, abbreviationsFg)
                                     }
                                 },
-                                update = { cv: ApplandeoCalendarView ->
+                                update = { cv ->
+                                    // Show markers for tasks with due dates
                                     val events = tasks.mapNotNull { t ->
                                         t.dueDate?.let {
                                             val cal = Calendar.getInstance().apply { time = it }
@@ -313,6 +294,7 @@ fun MainScreen(
                                     }
                                     cv.setEvents(events)
 
+                                    // When a date is clicked, send its start/end millis
                                     cv.setOnDayClickListener { eventDay ->
                                         val cal = eventDay.calendar.apply {
                                             set(Calendar.HOUR_OF_DAY, 0)
@@ -339,7 +321,7 @@ fun MainScreen(
 
                         Spacer(Modifier.height(8.dp))
 
-                        // 2) Sort dropdown
+                        // Sort Dropdown
                         ExposedDropdownMenuBox(
                             expanded = sortExpanded,
                             onExpandedChange = { sortExpanded = !sortExpanded },
@@ -353,7 +335,9 @@ fun MainScreen(
                                 trailingIcon = {
                                     ExposedDropdownMenuDefaults.TrailingIcon(expanded = sortExpanded)
                                 },
-                                modifier = Modifier.menuAnchor().fillMaxWidth()
+                                modifier = Modifier
+                                    .menuAnchor()
+                                    .fillMaxWidth()
                                     .padding(horizontal = 16.dp)
                             )
                             ExposedDropdownMenu(
@@ -374,14 +358,15 @@ fun MainScreen(
 
                         Spacer(Modifier.height(8.dp))
 
-                        // 3) Task list
+                        // Task List (sorted)
                         val displayed = when (sortSelection) {
                             "Priority" -> tasks.sortedBy {
                                 when (it.priority) {
-                                    "High" -> 1; "Medium" -> 2; else -> 3
+                                    "High" -> 1
+                                    "Medium" -> 2
+                                    else -> 3
                                 }
                             }
-
                             "Due Date" -> tasks.sortedBy { it.dueDate ?: Date(Long.MAX_VALUE) }
                             else -> tasks
                         }
@@ -392,7 +377,8 @@ fun MainScreen(
                             onTaskStatusChanged = onTaskStatusChanged
                         )
                     }
-                    // — detail dialog —
+
+                    // Task Detail Dialog
                     selectedTask?.let { task ->
                         TaskDetailDialog(
                             task = task,
@@ -404,20 +390,10 @@ fun MainScreen(
                             }
                         )
                     }
-
-                    // — date‐filtered dialog —
-                    currentDateWindow?.let { (date, range) ->
-                        TasksByDateDialog(
-                            date = date,
-                            tasks = tasksForDate,
-                            onDismiss = { currentDateWindow = null },
-                            onItemClick = { selectedTask = it },
-                            onTaskStatusChanged = onTaskStatusChanged
-                        )
-                    }
                 }
             )
 
+            // Voice-command FAB
             FloatingActionButton(
                 onClick = { voiceLauncher.launch(speechIntent) },
                 modifier = Modifier

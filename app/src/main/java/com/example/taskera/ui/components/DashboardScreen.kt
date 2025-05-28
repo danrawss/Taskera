@@ -61,7 +61,7 @@ fun DashboardScreen(
 
         Spacer(Modifier.height(24.dp))
 
-        // ─── This Week by Category (Pie + Legend) ────────────────
+        // This Week by Category (Pie + Legend)
         Text(
             "This Week by Category",
             style = MaterialTheme.typography.titleSmall,
@@ -78,7 +78,7 @@ fun DashboardScreen(
         Spacer(Modifier.height(8.dp))
         // Legend
         Column(modifier = Modifier.padding(horizontal = 32.dp)) {
-            // use same color palette as pie chart
+            // Use same color palette as pie chart
             val colors = listOf(
                 MaterialTheme.colorScheme.primary,
                 MaterialTheme.colorScheme.secondary,
@@ -102,7 +102,7 @@ fun DashboardScreen(
 
         Spacer(Modifier.height(32.dp))
 
-        // ─── Last 7-Day Due Trend (Line + Data Row) ─────────────
+        // Last 7-Day Due Trend (Line + Data Row)
         Text(
             "Last 7-Day Due Trend",
             style = MaterialTheme.typography.titleSmall,

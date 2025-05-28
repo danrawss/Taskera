@@ -56,7 +56,7 @@ fun SevenDayTrendLineChart(
         val wStep = size.width / (data.size - 1).coerceAtLeast(1)
         val h     = size.height
 
-        // build points
+        // Build points
         val points = data.mapIndexed { i, pair ->
             Offset(
                 x = i * wStep,
@@ -64,7 +64,7 @@ fun SevenDayTrendLineChart(
             )
         }
 
-        // draw the connecting line
+        // Draw the connecting line
         drawPath(
             path = Path().apply {
                 moveTo(points.first().x, points.first().y)
@@ -74,7 +74,7 @@ fun SevenDayTrendLineChart(
             style = Stroke(width = 3f)
         )
 
-        // draw the circles
+        // Draw the circles
         points.forEach {
             drawCircle(
                 color  = lineColor,

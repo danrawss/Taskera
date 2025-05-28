@@ -16,11 +16,9 @@ class ComposeLoginActivity : ComponentActivity() {
 
     private lateinit var googleSignInClient: GoogleSignInClient
 
-    // NEW: registerForActivityResult replaces onActivityResult
     private val signInLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        // This block is called when the sign-in Intent returns
         if (result.resultCode == RESULT_OK) {
             val data = result.data
             val task = GoogleSignIn.getSignedInAccountFromIntent(data)

@@ -4,19 +4,15 @@ import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.example.taskera.data.NotificationPrefs.defaultLeadMin
 import com.example.taskera.data.Task
 import java.text.SimpleDateFormat
 import java.time.LocalTime
@@ -149,7 +145,7 @@ fun TaskDialog(
                 )
 
                 Spacer(Modifier.height(8.dp))
-                // ➌ The new LeadTimeDropdown
+                // LeadTimeDropdown
                 Text("Reminder lead time", style = MaterialTheme.typography.bodySmall)
                 LeadTimeDropdown(
                     options            = listOf(
@@ -169,7 +165,7 @@ fun TaskDialog(
             TextButton(
                 onClick = {
                     if (title.isNotBlank()) {
-                        // Build Task object (keep id for edits)
+                        // Build Task object
                         val result = task?.copy(
                             title       = title,
                             description = description.takeIf { it.isNotBlank() },

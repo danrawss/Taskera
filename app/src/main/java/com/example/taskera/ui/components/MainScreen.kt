@@ -1,19 +1,13 @@
 package com.example.taskera.ui.components
 
-import android.content.Context
-import androidx.core.content.ContextCompat
-import android.view.ViewGroup
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,7 +16,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.painterResource
 import kotlinx.coroutines.launch
-import androidx.drawerlayout.widget.DrawerLayout
 import com.applandeo.materialcalendarview.CalendarView as ApplandeoCalendarView
 import com.applandeo.materialcalendarview.EventDay
 import com.applandeo.materialcalendarview.utils.AppearanceUtils
@@ -35,7 +28,15 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.material3.MaterialTheme
-import com.example.taskera.viewmodel.Stats
+import android.Manifest
+import android.app.Activity
+import android.content.Intent
+import android.speech.RecognizerIntent
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,6 +58,8 @@ fun MainScreen(
     onSettings:() -> Unit,
     onLogout: () -> Unit
 ) {
+    val context = LocalContext.current
+
     // 1) UI state for sorting
     var sortExpanded by remember { mutableStateOf(false) }
     var sortSelection by remember { mutableStateOf("Default") }
@@ -73,12 +76,56 @@ fun MainScreen(
     // 4) Drawer state
     val scope       = rememberCoroutineScope()
 
-    val cardBg        = MaterialTheme.colorScheme.surfaceVariant
     val headerBg      = MaterialTheme.colorScheme.primaryContainer
     val headerLabel   = MaterialTheme.colorScheme.onPrimaryContainer
     val pagesBg       = MaterialTheme.colorScheme.secondaryContainer
     val abbreviationsBg = MaterialTheme.colorScheme.secondaryContainer.toArgb()
     val abbreviationsFg = MaterialTheme.colorScheme.onSecondaryContainer.toArgb()
+
+    // ➊ Ask the user for MIC permission when the screen appears
+    val audioPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (!granted) {
+            Toast.makeText(context, "Mic permission denied", Toast.LENGTH_SHORT).show()
+        }
+    }
+    LaunchedEffect(Unit) {
+        audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+    }
+
+    // ➋ Speech‐recognition launcher
+    val voiceLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        // ① grab data into a local val
+        val intent = result.data
+
+        // ② now kotlin knows `intent` is stable
+        if (result.resultCode == Activity.RESULT_OK && intent != null) {
+            val spoken = intent
+                .getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+                ?.firstOrNull()
+                ?.trim()
+                ?.lowercase()
+                .orEmpty()
+
+            when {
+                "add task"    in spoken -> onAddTask()
+                "settings"    in spoken -> onSettings()
+                "dashboard"   in spoken -> onDashboard()
+                else -> Toast
+                    .makeText(context, "Sorry, I didn’t catch that.", Toast.LENGTH_SHORT)
+                    .show()
+            }
+        }
+    }
+
+    // ➌ Build the intent once
+    val speechIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+        putExtra(RecognizerIntent.EXTRA_PROMPT, "Say: Add task, open settings, or show dashboard")
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -200,160 +247,186 @@ fun MainScreen(
             }
         }
     ) {
-        Scaffold(
-            topBar = {
-                SmallTopAppBar(
-                    title = { Text("Taskera") },
-                    navigationIcon = {
-                        IconButton(onClick = {
-                            scope.launch { drawerState.open() }
-                        }) {
-                            Icon(Icons.Default.Menu, contentDescription = "Menu")
-                        }
-                    }
-                )
-            },
-            floatingActionButton = {
-                FloatingActionButton(onClick = onAddTask) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Task")
-                }
-            },
-            content = { padding ->
-                Column(
-                    Modifier
-                        .fillMaxSize()
-                        .padding(padding)
-                ) {
-                    // 1) CalendarView via AndroidView
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .wrapContentHeight()
-                            .padding(horizontal = 16.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                    ) {
-                        AndroidView<ApplandeoCalendarView>(
-                            factory = { ctx ->
-                                ApplandeoCalendarView(ctx, null).apply {
-                                    AppearanceUtils.setHeaderColor(       this, headerBg.toArgb())
-                                    AppearanceUtils.setHeaderLabelColor(  this, headerLabel.toArgb())
-                                    AppearanceUtils.setPagesColor(        this, pagesBg.toArgb())
-                                    //  Week‐day row
-                                    AppearanceUtils.setAbbreviationsBarColor(this, abbreviationsBg)
-                                    AppearanceUtils.setAbbreviationsLabelsColor(this, abbreviationsFg)
-                                }
-                            },
-                            update = { cv: ApplandeoCalendarView ->
-                                val events = tasks.mapNotNull { t ->
-                                    t.dueDate?.let {
-                                        val cal = Calendar.getInstance().apply { time = it }
-                                        EventDay(cal, R.drawable.ic_task_marker)
-                                    }
-                                }
-                                cv.setEvents(events)
-
-                                cv.setOnDayClickListener { eventDay ->
-                                    val cal = eventDay.calendar.apply {
-                                        set(Calendar.HOUR_OF_DAY, 0)
-                                        set(Calendar.MINUTE, 0)
-                                        set(Calendar.SECOND, 0)
-                                        set(Calendar.MILLISECOND, 0)
-                                    }
-                                    val start = cal.timeInMillis
-                                    cal.apply {
-                                        set(Calendar.HOUR_OF_DAY, 23)
-                                        set(Calendar.MINUTE, 59)
-                                        set(Calendar.SECOND, 59)
-                                        set(Calendar.MILLISECOND, 999)
-                                    }
-                                    val end = cal.timeInMillis
-                                    onDateClick(eventDay.calendar.time, start, end)
-                                }
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(8.dp)
-                        )
-                    }
-
-                    Spacer(Modifier.height(8.dp))
-
-                    // 2) Sort dropdown
-                    ExposedDropdownMenuBox(
-                        expanded = sortExpanded,
-                        onExpandedChange = { sortExpanded = !sortExpanded },
-                        modifier = Modifier.width(240.dp)
-                    ) {
-                        TextField(
-                            readOnly = true,
-                            value = "Sort: $sortSelection",
-                            onValueChange = {},
-                            label = { Text("Sort by") },
-                            trailingIcon = {
-                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = sortExpanded)
-                            },
-                            modifier = Modifier.menuAnchor().fillMaxWidth().padding(horizontal = 16.dp)
-                        )
-                        ExposedDropdownMenu(
-                            expanded = sortExpanded,
-                            onDismissRequest = { sortExpanded = false }
-                        ) {
-                            sortOptions.forEach { opt ->
-                                DropdownMenuItem(
-                                    text = { Text(opt) },
-                                    onClick = {
-                                        sortSelection = opt
-                                        sortExpanded = false
-                                    }
-                                )
+        Box(Modifier.fillMaxSize()) {
+            Scaffold(
+                topBar = {
+                    SmallTopAppBar(
+                        title = { Text("Taskera") },
+                        navigationIcon = {
+                            IconButton(onClick = {
+                                scope.launch { drawerState.open() }
+                            }) {
+                                Icon(Icons.Default.Menu, contentDescription = "Menu")
                             }
                         }
-                    }
-
-                    Spacer(Modifier.height(8.dp))
-
-                    // 3) Task list
-                    val displayed = when (sortSelection) {
-                        "Priority" -> tasks.sortedBy { when (it.priority) {
-                            "High"   -> 1; "Medium" -> 2; else -> 3 } }
-                        "Due Date" -> tasks.sortedBy { it.dueDate ?: Date(Long.MAX_VALUE) }
-                        else       -> tasks
-                    }
-
-                    TaskList(
-                        tasks               = displayed,
-                        onItemClick         = { selectedTask = it },
-                        onTaskStatusChanged = onTaskStatusChanged
                     )
-                }
-                // — detail dialog —
-                selectedTask?.let { task ->
-                    TaskDetailDialog(
-                        task      = task,
-                        onDismiss = { selectedTask = null },
-                        onEdit    = { onEditTask(task) },
-                        onDelete  = {
-                            onDeleteTask(task)
-                            selectedTask = null
+                },
+                floatingActionButton = {
+                    FloatingActionButton(onClick = onAddTask) {
+                        Icon(Icons.Default.Add, contentDescription = "Add Task")
+                    }
+                },
+                content = { padding ->
+                    Column(
+                        Modifier
+                            .fillMaxSize()
+                            .padding(padding)
+                    ) {
+                        // 1) CalendarView via AndroidView
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .wrapContentHeight()
+                                .padding(horizontal = 16.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                        ) {
+                            AndroidView<ApplandeoCalendarView>(
+                                factory = { ctx ->
+                                    ApplandeoCalendarView(ctx, null).apply {
+                                        AppearanceUtils.setHeaderColor(this, headerBg.toArgb())
+                                        AppearanceUtils.setHeaderLabelColor(
+                                            this,
+                                            headerLabel.toArgb()
+                                        )
+                                        AppearanceUtils.setPagesColor(this, pagesBg.toArgb())
+                                        //  Week‐day row
+                                        AppearanceUtils.setAbbreviationsBarColor(
+                                            this,
+                                            abbreviationsBg
+                                        )
+                                        AppearanceUtils.setAbbreviationsLabelsColor(
+                                            this,
+                                            abbreviationsFg
+                                        )
+                                    }
+                                },
+                                update = { cv: ApplandeoCalendarView ->
+                                    val events = tasks.mapNotNull { t ->
+                                        t.dueDate?.let {
+                                            val cal = Calendar.getInstance().apply { time = it }
+                                            EventDay(cal, R.drawable.ic_task_marker)
+                                        }
+                                    }
+                                    cv.setEvents(events)
+
+                                    cv.setOnDayClickListener { eventDay ->
+                                        val cal = eventDay.calendar.apply {
+                                            set(Calendar.HOUR_OF_DAY, 0)
+                                            set(Calendar.MINUTE, 0)
+                                            set(Calendar.SECOND, 0)
+                                            set(Calendar.MILLISECOND, 0)
+                                        }
+                                        val start = cal.timeInMillis
+                                        cal.apply {
+                                            set(Calendar.HOUR_OF_DAY, 23)
+                                            set(Calendar.MINUTE, 59)
+                                            set(Calendar.SECOND, 59)
+                                            set(Calendar.MILLISECOND, 999)
+                                        }
+                                        val end = cal.timeInMillis
+                                        onDateClick(eventDay.calendar.time, start, end)
+                                    }
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(8.dp)
+                            )
                         }
-                    )
-                }
 
-                // — date‐filtered dialog —
-                currentDateWindow?.let { (date, range) ->
-                    TasksByDateDialog(
-                        date                = date,
-                        tasks               = tasksForDate,
-                        onDismiss           = { currentDateWindow = null },
-                        onItemClick         = { selectedTask = it },
-                        onTaskStatusChanged = onTaskStatusChanged
-                    )
+                        Spacer(Modifier.height(8.dp))
+
+                        // 2) Sort dropdown
+                        ExposedDropdownMenuBox(
+                            expanded = sortExpanded,
+                            onExpandedChange = { sortExpanded = !sortExpanded },
+                            modifier = Modifier.width(240.dp)
+                        ) {
+                            TextField(
+                                readOnly = true,
+                                value = "Sort: $sortSelection",
+                                onValueChange = {},
+                                label = { Text("Sort by") },
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = sortExpanded)
+                                },
+                                modifier = Modifier.menuAnchor().fillMaxWidth()
+                                    .padding(horizontal = 16.dp)
+                            )
+                            ExposedDropdownMenu(
+                                expanded = sortExpanded,
+                                onDismissRequest = { sortExpanded = false }
+                            ) {
+                                sortOptions.forEach { opt ->
+                                    DropdownMenuItem(
+                                        text = { Text(opt) },
+                                        onClick = {
+                                            sortSelection = opt
+                                            sortExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(Modifier.height(8.dp))
+
+                        // 3) Task list
+                        val displayed = when (sortSelection) {
+                            "Priority" -> tasks.sortedBy {
+                                when (it.priority) {
+                                    "High" -> 1; "Medium" -> 2; else -> 3
+                                }
+                            }
+
+                            "Due Date" -> tasks.sortedBy { it.dueDate ?: Date(Long.MAX_VALUE) }
+                            else -> tasks
+                        }
+
+                        TaskList(
+                            tasks = displayed,
+                            onItemClick = { selectedTask = it },
+                            onTaskStatusChanged = onTaskStatusChanged
+                        )
+                    }
+                    // — detail dialog —
+                    selectedTask?.let { task ->
+                        TaskDetailDialog(
+                            task = task,
+                            onDismiss = { selectedTask = null },
+                            onEdit = { onEditTask(task) },
+                            onDelete = {
+                                onDeleteTask(task)
+                                selectedTask = null
+                            }
+                        )
+                    }
+
+                    // — date‐filtered dialog —
+                    currentDateWindow?.let { (date, range) ->
+                        TasksByDateDialog(
+                            date = date,
+                            tasks = tasksForDate,
+                            onDismiss = { currentDateWindow = null },
+                            onItemClick = { selectedTask = it },
+                            onTaskStatusChanged = onTaskStatusChanged
+                        )
+                    }
                 }
+            )
+
+            FloatingActionButton(
+                onClick = { voiceLauncher.launch(speechIntent) },
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .navigationBarsPadding()
+                    .padding(16.dp)
+            ) {
+                Icon(Icons.Default.Mic, contentDescription = "Voice Command")
             }
-        )
+        }
     }
 }

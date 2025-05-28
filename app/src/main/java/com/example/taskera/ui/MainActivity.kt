@@ -85,29 +85,29 @@ class MainActivity : AppCompatActivity() {
 
         setContent {
             var isDarkMode by rememberSaveable { mutableStateOf(initialDark) }
-            var dialogTask   by remember { mutableStateOf<Task?>(null) }
-            var isDialogOpen by rememberSaveable { mutableStateOf(false) }
-            val vm: TaskViewModel = viewModel(factory = factory)
-            // track which day was clicked (date + start/end millis)
-            var dateWindow by rememberSaveable { mutableStateOf<Pair<Date, Pair<Long,Long>>?>(null) }
-            val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
-
-            val composeContext = LocalContext.current
-            val ioScope = rememberCoroutineScope()
-            val navController = rememberNavController()
-            val activity = composeContext as Activity
-
-            val weeklyStats by vm.weeklyCategoryStats.observeAsState(emptyMap())
-            val trendData  by vm.oneWeekTrend.observeAsState(emptyList())
-
-            // ➊ Get your SettingsViewModel and read default lead-minutes
-            val settingsFactory = SettingsViewModelFactory(composeContext)
-            val settingsVm: SettingsViewModel = viewModel(factory = settingsFactory)
-            val defaultLeadMin by settingsVm.defaultLeadMin.observeAsState(initial = 30)
-            // convert to a Duration
-            val defaultLeadDuration = Duration.ofMinutes(defaultLeadMin.toLong())
-
             TaskeraTheme(darkTheme = isDarkMode) {
+                var dialogTask   by remember { mutableStateOf<Task?>(null) }
+                var isDialogOpen by rememberSaveable { mutableStateOf(false) }
+
+                val vm: TaskViewModel = viewModel(factory = factory)
+                // track which day was clicked (date + start/end millis)
+                var dateWindow by rememberSaveable { mutableStateOf<Pair<Date, Pair<Long,Long>>?>(null) }
+                val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
+
+                val composeContext = LocalContext.current
+                val ioScope = rememberCoroutineScope()
+                val navController = rememberNavController()
+                val activity = composeContext as Activity
+
+                val weeklyStats by vm.weeklyCategoryStats.observeAsState(emptyMap())
+                val trendData  by vm.oneWeekTrend.observeAsState(emptyList())
+
+                // ➊ Get your SettingsViewModel and read default lead-minutes
+                val settingsFactory = SettingsViewModelFactory(composeContext)
+                val settingsVm: SettingsViewModel = viewModel(factory = settingsFactory)
+                val defaultLeadMin by settingsVm.defaultLeadMin.observeAsState(initial = 30)
+                // convert to a Duration
+                val defaultLeadDuration = Duration.ofMinutes(defaultLeadMin.toLong())
                 // 4) Collect live task list
                 val tasks by vm.allTasks.observeAsState(initial = emptyList<Task>())
                 val stats by vm.todayStats.observeAsState(Stats(0,0))

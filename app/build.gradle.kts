@@ -121,4 +121,6 @@ dependencies {
 
     // Compose integration
     implementation("androidx.datastore:datastore-preferences-core:1.0.0")
+
+    implementation("androidx.compose.material:material-icons-extended:1.5.0")
 }

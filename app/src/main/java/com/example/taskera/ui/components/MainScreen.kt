@@ -39,6 +39,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,6 +64,12 @@ fun MainScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    // Keep track of whether we are currently waiting for a “which date?” response
+    var waitingForDate by remember { mutableStateOf(false) }
+    // If the user has said “show tasks” and we asked “Do you want all or for a specific day?”,
+    // this flag tells us that the next spoken result should be interpreted as a date or “all”.
+    // Once we handle it, we set waitingForDate = false.
 
     // UI State
     var sortExpanded by remember { mutableStateOf(false) }
@@ -104,8 +113,229 @@ fun MainScreen(
                 ?.lowercase()
                 .orEmpty()
 
+            // If we are currently waiting for the date after “show tasks”
+            if (waitingForDate) {
+                // Reset the flag immediately so normal commands resume next time
+                waitingForDate = false
+
+                // Interpret this spoken phrase as either “all” or a date
+                val spokenDate = spoken  // e.g. “today”, “tomorrow”, “06/03/2025”
+
+                if ("all" in spokenDate) {
+                    // Show all task titles
+                    if (tasks.isEmpty()) {
+                        Toast.makeText(context, "No tasks to show", Toast.LENGTH_SHORT).show()
+                    } else {
+                        val allTitles = tasks.joinToString(", ") { it.title }
+                        Toast.makeText(
+                            context,
+                            "All tasks: $allTitles",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                } else {
+                    // Try parsing “today” / “tomorrow”
+                    val today = LocalDate.now()
+                    val targetDate: LocalDate? = when (spokenDate) {
+                        "today" -> today
+                        "tomorrow" -> today.plusDays(1)
+                        else -> {
+                            // Try parsing with a known pattern (e.g. MM/dd/yyyy)
+                            try {
+                                LocalDate.parse(spokenDate, DateTimeFormatter.ofPattern("MM/dd/yyyy"))
+                            } catch (e: DateTimeParseException) {
+                                null
+                            }
+                        }
+                    }
+
+                    if (targetDate == null) {
+                        Toast.makeText(
+                            context,
+                            "Sorry, couldn’t parse \"$spokenDate\" as a date",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    } else {
+                        // Filter tasks whose dueDate matches targetDate
+                        val matchesOnDate = tasks.filter { task ->
+                            task.dueDate?.toInstant()
+                                ?.atZone(TimeZone.getDefault().toZoneId())
+                                ?.toLocalDate() == targetDate
+                        }
+                        if (matchesOnDate.isEmpty()) {
+                            Toast.makeText(
+                                context,
+                                "No tasks found for ${targetDate.format(DateTimeFormatter.ofPattern("MM/dd/yyyy"))}",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        } else {
+                            // List their titles
+                            val titlesForDate = matchesOnDate.joinToString(", ") { it.title }
+                            Toast.makeText(
+                                context,
+                                "Tasks on ${targetDate.format(DateTimeFormatter.ofPattern("MM/dd/yyyy"))}: $titlesForDate",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+                }
+                return@rememberLauncherForActivityResult
+            }
+
             when {
+                // Add task
                 "add task"  in spoken -> onAddTask()
+
+                // Delete task
+                spoken.startsWith("delete task") -> {
+                    // Strip out the exact prefix "delete task"
+                    val remainder = spoken.removePrefix("delete task").trim()
+                    if (remainder.isEmpty()) {
+                        Toast.makeText(
+                            context,
+                            "Please say “delete task [task name]”",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    } else {
+                        // Search for matching task titles
+                        val matches = tasks.filter { task ->
+                            task.title.lowercase().contains(remainder)
+                        }
+                        when (matches.size) {
+                            0 -> {
+                                Toast.makeText(
+                                    context,
+                                    "No task named “$remainder” found",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                            1 -> {
+                                // Exactly one match → delete it
+                                onDeleteTask(matches[0])
+                                Toast.makeText(
+                                    context,
+                                    "Deleted task “${matches[0].title}”",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                            else -> {
+                                // Multiple matches → ask user to be more specific
+                                val titles = matches.joinToString { it.title }
+                                Toast.makeText(
+                                    context,
+                                    "Multiple matches: $titles. Be more specific.",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    }
+                }
+
+                // Edit task
+                spoken.startsWith("edit task") -> {
+                    val remainder = spoken.removePrefix("edit task").trim()
+                    if (remainder.isEmpty()) {
+                        Toast.makeText(
+                            context,
+                            "Please say “edit task [task name]”",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    } else {
+                        val matches = tasks.filter { task ->
+                            task.title.lowercase().contains(remainder)
+                        }
+                        when (matches.size) {
+                            0 -> {
+                                Toast.makeText(
+                                    context,
+                                    "No task named “$remainder” found",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                            1 -> {
+                                onEditTask(matches[0])
+                                Toast.makeText(
+                                    context,
+                                    "Editing task “${matches[0].title}”",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                            else -> {
+                                val titles = matches.joinToString { it.title }
+                                Toast.makeText(
+                                    context,
+                                    "Multiple matches: $titles. Be more specific.",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    }
+                }
+
+                // Show tasks
+                spoken.startsWith("show tasks") -> {
+                    val remainder = spoken.removePrefix("show tasks").trim()
+                    if (remainder.isEmpty()) {
+                        // Step 2: ask follow‐up question
+                        Toast.makeText(
+                            context,
+                            "Do you want all tasks or tasks for a specific day? Say “all” or a date (e.g. MM/dd/yyyy).",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        waitingForDate = true
+                    } else {
+                        // If the user said “show tasks 06/03/2025” or “show tasks today”
+                        // we handle it immediately (same code as the follow‐up branch)
+                        val spokenDate = remainder  // e.g. “06/03/2025” or “today”
+                        val today = LocalDate.now()
+                        val targetDate: LocalDate? = when (spokenDate) {
+                            "today" -> today
+                            "tomorrow" -> today.plusDays(1)
+                            else -> {
+                                try {
+                                    LocalDate.parse(
+                                        spokenDate,
+                                        DateTimeFormatter.ofPattern("MM/dd/yyyy")
+                                    )
+                                } catch (e: DateTimeParseException) {
+                                    null
+                                }
+                            }
+                        }
+
+                        if (targetDate == null) {
+                            Toast.makeText(
+                                context,
+                                "Sorry, couldn’t parse \"$spokenDate\" as a date",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        } else {
+                            val matchesOnDate = tasks.filter { task ->
+                                task.dueDate
+                                    ?.toInstant()
+                                    ?.atZone(TimeZone.getDefault().toZoneId())
+                                    ?.toLocalDate() == targetDate
+                            }
+                            if (matchesOnDate.isEmpty()) {
+                                Toast.makeText(
+                                    context,
+                                    "No tasks found for ${targetDate.format(DateTimeFormatter.ofPattern("MM/dd/yyyy"))}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            } else {
+                                val titlesForDate = matchesOnDate.joinToString { it.title }
+                                Toast.makeText(
+                                    context,
+                                    "Tasks on ${targetDate.format(
+                                        DateTimeFormatter.ofPattern("MM/dd/yyyy")
+                                    )}: $titlesForDate",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    }
+                }
+
                 "settings"  in spoken -> onSettings()
                 "dashboard" in spoken -> onDashboard()
                 else -> Toast
@@ -118,7 +348,10 @@ fun MainScreen(
     // Build the speech intent once
     val speechIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
         putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-        putExtra(RecognizerIntent.EXTRA_PROMPT, "Say: Add task, open settings, or show dashboard")
+        putExtra(
+            RecognizerIntent.EXTRA_PROMPT,
+            "Commands: work with tasks"
+        )
     }
 
     ModalNavigationDrawer(

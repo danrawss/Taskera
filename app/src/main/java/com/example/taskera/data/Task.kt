@@ -18,5 +18,6 @@ data class Task(
     val category: String = "General", // e.g. "Work", "Personal"
     val isCompleted: Boolean = false,
     val userEmail: String,
+    val calendarEventId: String? = null, // the Google Calendar event ID
     val leadTimeMin: Int? = null  // minutes before due; null = use default
 )

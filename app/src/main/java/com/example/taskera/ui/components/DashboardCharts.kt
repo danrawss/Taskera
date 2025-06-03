@@ -25,14 +25,25 @@ fun WeeklyCategoryPieChart(
         MaterialTheme.colorScheme.primaryContainer
     )
     Canvas(modifier = modifier) {
+        // Compute the diameter based on the smaller dimension
+        val diameter = size.minDimension
+
+        // Figure out the top-left corner so the circle is centered
+        val left   = (size.width - diameter) / 2f
+        val top    = (size.height - diameter) / 2f
+        val diameterSize = Size(diameter, diameter)
+
         var startAngle = -90f
-        data.entries.forEachIndexed { idx, (cat, count) ->
+        data.entries.forEachIndexed { idx, (_, count) ->
             val sweep = (count / total.toFloat()) * 360f
+
             drawArc(
-                color = colors[idx % colors.size],
+                color      = colors[idx % colors.size],
                 startAngle = startAngle,
                 sweepAngle = sweep,
-                useCenter = true
+                useCenter  = true,
+                topLeft    = Offset(left, top),
+                size       = diameterSize
             )
             startAngle += sweep
         }

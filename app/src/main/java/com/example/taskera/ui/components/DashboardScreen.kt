@@ -119,14 +119,17 @@ fun DashboardScreen(
 
         Spacer(Modifier.height(8.dp))
         // Exact numbers
-        LazyRow(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 16.dp, end = 32.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(start = 16.dp, end = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            items(oneWeekTrend) { (date, count) ->
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            oneWeekTrend.forEach { (date, count) ->
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                     Text(date.format(dateFmt), style = MaterialTheme.typography.bodySmall)
                     Text("$count", style = MaterialTheme.typography.bodyMedium)
                 }

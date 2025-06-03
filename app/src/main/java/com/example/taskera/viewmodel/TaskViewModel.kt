@@ -14,11 +14,14 @@ import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.example.taskera.data.NotificationPrefs
 import androidx.work.ExistingWorkPolicy
+import com.example.taskera.utils.CalendarUtils
 import kotlinx.coroutines.flow.first
 import java.time.LocalTime
 import java.util.concurrent.TimeUnit
 import com.example.taskera.utils.combineDateAndTime
 import com.example.taskera.workers.ReminderWorker
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.time.*
 
 
@@ -32,19 +35,116 @@ class TaskViewModel(
     // Repository already filters tasks based on userEmail
     val allTasks: LiveData<List<Task>> = repository.allTasks
 
-    fun insertTask(task: Task) = viewModelScope.launch {
-        repository.insertTask(task)
-        scheduleReminder(task)
+    // Inserts a new Task into Room, then creates a Calendar event (if date/time exist),
+    // and finally updates that Task row with the new eventId.
+    fun insertTask(task: Task) {
+        viewModelScope.launch {
+            // Insert into Room and get the new row ID
+            val newRowId: Long = repository.insertTaskReturningId(task)
+
+            // If there is a dueDate/startTime/endTime, create a Calendar event
+            if (task.dueDate != null && task.startTime != null && task.endTime != null) {
+                val startMillis = combineDateAndTime(task.dueDate, task.startTime)
+                val endMillis   = combineDateAndTime(task.dueDate, task.endTime)
+
+                // Call CalendarUtils.createCalendarEvent on IO
+                val eventId: String? = withContext(Dispatchers.IO) {
+                    CalendarUtils.createCalendarEvent(
+                        context,
+                        task.title,
+                        task.description.orEmpty(),
+                        startMillis,
+                        endMillis
+                    )
+                }
+
+                // If we got an eventId back (non-null), update the Task row with it
+                if (eventId != null) {
+                    val updatedTask = task.copy(
+                        id = newRowId.toInt(),
+                        calendarEventId = eventId
+                    )
+                    repository.updateTask(updatedTask)
+                }
+            }
+            scheduleReminder(task.copy(id = newRowId.toInt()))
+        }
     }
 
-    fun updateTask(task: Task) = viewModelScope.launch {
-        repository.updateTask(task)
-        scheduleReminder(task)
+    //Updates an existing Task in Room, then also updates/creates/deletes its Calendar event.
+    fun updateTask(task: Task) {
+        viewModelScope.launch {
+            repository.updateTask(task)
+
+            val oldEventId: String? = task.calendarEventId
+
+            // Update existing event if oldEventId != null and dates still present
+            if (oldEventId != null
+                && task.dueDate != null
+                && task.startTime != null
+                && task.endTime != null
+            ) {
+                val startMillis = combineDateAndTime(task.dueDate, task.startTime)
+                val endMillis   = combineDateAndTime(task.dueDate, task.endTime)
+
+                withContext(Dispatchers.IO) {
+                    CalendarUtils.updateCalendarEvent(
+                        context,
+                        oldEventId,
+                        task.title,
+                        task.description.orEmpty(),
+                        startMillis,
+                        endMillis
+                    )
+                }
+            }
+            // Create a new event if none existed before but now dates are present
+            else if (oldEventId == null
+                && task.dueDate != null
+                && task.startTime != null
+                && task.endTime != null
+            ) {
+                val startMillis = combineDateAndTime(task.dueDate, task.startTime)
+                val endMillis   = combineDateAndTime(task.dueDate, task.endTime)
+
+                val newEventId: String? = withContext(Dispatchers.IO) {
+                    CalendarUtils.createCalendarEvent(
+                        context,
+                        task.title,
+                        task.description.orEmpty(),
+                        startMillis,
+                        endMillis
+                    )
+                }
+                if (newEventId != null) {
+                    repository.updateTask(task.copy(calendarEventId = newEventId))
+                }
+            }
+            // Delete the existing event if oldEventId != null but user removed the dueDate
+            else if (oldEventId != null && task.dueDate == null) {
+                withContext(Dispatchers.IO) {
+                    CalendarUtils.deleteCalendarEvent(context, oldEventId)
+                }
+                repository.updateTask(task.copy(calendarEventId = null))
+            }
+
+            scheduleReminder(task)
+        }
     }
 
-    fun deleteTask(task: Task) = viewModelScope.launch {
-        repository.deleteTask(task)
-        cancelReminder(task)
+    //Deletes a Task from Room. If it has a calendarEventId, delete that event first.
+    fun deleteTask(task: Task) {
+        viewModelScope.launch {
+            // If there is a linked Calendar event, delete it
+            task.calendarEventId?.let { eventId ->
+                withContext(Dispatchers.IO) {
+                    CalendarUtils.deleteCalendarEvent(context, eventId)
+                }
+            }
+
+            repository.deleteTask(task)
+            cancelReminder(task)
+        }
     }
 
     fun getTaskById(taskId: Int): LiveData<Task> {

@@ -32,14 +32,8 @@ object CalendarUtils {
     }
 
     /**
-     * Creates a calendar event using the given details.
-     *
-     * @param context The application context.
-     * @param title The event title.
-     * @param description The event description.
-     * @param startMillis The event start time in milliseconds.
-     * @param endMillis The event end time in milliseconds.
-     * @return The event ID if creation was successful, or null otherwise.
+     * Creates a new event in “primary” calendar.
+     * Returns the new event’s String ID on success, or null on failure.
      */
     fun createCalendarEvent(
         context: Context,
@@ -73,6 +67,68 @@ object CalendarUtils {
         } catch (e: Exception) {
             e.printStackTrace()
             null
+        }
+    }
+
+    /**
+     * Updates an existing event (by its eventId) in the user’s “primary” calendar.
+     * If anything goes wrong (service is null or update fails), this is a no-op.
+     */
+    fun updateCalendarEvent(
+        context: Context,
+        eventId: String,
+        title: String,
+        description: String,
+        startMillis: Long,
+        endMillis: Long
+    ) {
+        val service = getCalendarService(context) ?: return
+
+        try {
+            // First, fetch the existing event
+            val existing = service.events()
+                .get("primary", eventId)
+                .execute()
+
+            // Modify its fields
+            existing.summary = title
+            existing.description = description
+
+            val timeZone = TimeZone.getDefault().id
+
+            existing.start = EventDateTime()
+                .setDateTime(DateTime(startMillis))
+                .setTimeZone(timeZone)
+
+            existing.end = EventDateTime()
+                .setDateTime(DateTime(endMillis))
+                .setTimeZone(timeZone)
+
+            // Push the update
+            service.events()
+                .update("primary", eventId, existing)
+                .execute()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    /**
+     * Deletes a Calendar event by its eventId from the user’s “primary” calendar.
+     * If the service is null or delete fails, this is a no-op.
+     */
+    fun deleteCalendarEvent(
+        context: Context,
+        eventId: String
+    ) {
+        val service = getCalendarService(context) ?: return
+
+        try {
+            service.events()
+                .delete("primary", eventId)
+                .execute()
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 }

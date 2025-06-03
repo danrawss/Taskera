@@ -24,6 +24,11 @@ class TaskRepository(
         taskDao.deleteTask(task)
     }
 
+    // Inserts a Task and returns its new row ID
+    suspend fun insertTaskReturningId(task: Task): Long {
+        return taskDao.insertTask(task)
+    }
+
     // Get a specific task for this user
     fun getTaskById(taskId: Int): LiveData<Task> {
         return taskDao.getTaskById(taskId, userEmail)

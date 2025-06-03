@@ -175,38 +175,35 @@ class MainActivity : AppCompatActivity() {
                                     val email  = GoogleSignIn.getLastSignedInAccount(composeContext)
                                         ?.email
                                         .orEmpty()
-                                    val toSave = result.copy(
-                                        userEmail   = email,
-                                        leadTimeMin = leadDuration.toMinutes().toInt()
-                                    )
-
-                                    // Insert or update exactly once
                                     if (dialogTask == null) {
+                                        // Adding
+                                        // Build a brand-new Task (no calendarEventId yet)
+                                        val toSave = result.copy(
+                                            userEmail       = email,
+                                            leadTimeMin     = leadDuration.toMinutes().toInt(),
+                                            calendarEventId = null
+                                        )
                                         vm.insertTask(toSave)
                                     } else {
-                                        vm.updateTask(toSave)
+                                        // Editing
+                                        // Take the existing Task (dialogTask), and copy over only the edited fields,
+                                        // preserving its id and calendarEventId
+                                        val original = dialogTask!!
+                                        val updated = original.copy(
+                                            title           = result.title,
+                                            description     = result.description?.takeIf { it.isNotBlank() },
+                                            dueDate         = result.dueDate,
+                                            startTime       = result.startTime,
+                                            endTime         = result.endTime,
+                                            priority        = result.priority,
+                                            category        = result.category,
+                                            leadTimeMin     = leadDuration.toMinutes().toInt(),
+                                            userEmail       = email,
+                                            calendarEventId = original.calendarEventId
+                                        )
+                                        vm.updateTask(updated)
                                     }
 
-                                    // Schedule calendar event if dates provided
-                                    toSave.dueDate?.let { dd ->
-                                        val st = toSave.startTime
-                                        val et = toSave.endTime
-                                        if (st != null && et != null) {
-                                            val startMillis = combineDateAndTime(dd, st)
-                                            val endMillis   = combineDateAndTime(dd, et)
-                                            ioScope.launch(Dispatchers.IO) {
-                                                CalendarUtils.createCalendarEvent(
-                                                    composeContext,
-                                                    toSave.title,
-                                                    toSave.description.orEmpty(),
-                                                    startMillis,
-                                                    endMillis
-                                                )
-                                            }
-                                        }
-                                    }
-
-                                    // Close the dialog
                                     isDialogOpen = false
                                 }
                             )

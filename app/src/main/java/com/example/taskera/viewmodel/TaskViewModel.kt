@@ -23,6 +23,7 @@ import com.example.taskera.workers.ReminderWorker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.*
+import java.time.temporal.TemporalAdjusters
 
 
 class TaskViewModel(
@@ -209,12 +210,27 @@ class TaskViewModel(
         startMillis to endMillis
     }
 
+    /**
+     * Returns a Pair where:
+     *  first = epoch millis at 00:00 of this week’s Monday,
+     *  second = epoch millis at 23:59:59.999 of this week’s Sunday.
+     */
+    private val thisWeekWindow by lazy {
+        val today  = LocalDate.now()
+        val monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        val sunday = today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY))
+
+        val startMillis = monday.startOfDayMillis()
+        val endMillis   = sunday.endOfDayMillis()
+        startMillis to endMillis
+    }
+
     // Weekly categories: Tasks due from Monday through Sunday of current week
     val weeklyCategoryStats: LiveData<Map<String, Int>> =
         repository
             .getTasksByDate(
-                todayWindow.first,
-                todayWindow.second
+                thisWeekWindow.first,
+                thisWeekWindow.second
             )
             .map { list ->
                 list.groupingBy { it.category }

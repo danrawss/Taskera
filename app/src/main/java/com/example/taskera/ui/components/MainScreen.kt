@@ -276,7 +276,7 @@ fun MainScreen(
                 spoken.startsWith("show tasks") -> {
                     val remainder = spoken.removePrefix("show tasks").trim()
                     if (remainder.isEmpty()) {
-                        // Step 2: ask follow‐up question
+                        // ask follow‐up question
                         Toast.makeText(
                             context,
                             "Do you want all tasks or tasks for a specific day? Say “all” or a date (e.g. MM/dd/yyyy).",

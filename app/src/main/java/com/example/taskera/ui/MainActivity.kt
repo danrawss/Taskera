@@ -11,7 +11,6 @@ import android.app.NotificationManager
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.*
@@ -31,11 +30,7 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.navigation.compose.rememberNavController
 import com.example.taskera.ui.components.TasksByDateDialog
-import com.example.taskera.utils.CalendarUtils
-import com.example.taskera.utils.combineDateAndTime
 import com.example.taskera.viewmodel.Stats
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import java.util.Date
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -45,6 +40,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.taskera.ui.components.NotificationSettingsScreen
+import com.example.taskera.ui.components.PlanScreen
 import com.example.taskera.viewmodel.SettingsViewModel
 import com.example.taskera.viewmodel.SettingsViewModelFactory
 import java.time.Duration
@@ -93,7 +89,6 @@ class MainActivity : AppCompatActivity() {
                 val drawerState  = rememberDrawerState(DrawerValue.Closed)
                 val composeContext = LocalContext.current
                 val activity     = composeContext as Activity
-                val ioScope      = rememberCoroutineScope()
                 val navController = rememberNavController()
 
                 // ViewModel and live data
@@ -118,6 +113,7 @@ class MainActivity : AppCompatActivity() {
                         MainScreen(
                             drawerState = drawerState,
                             onDashboard = { navController.navigate("dashboard") },
+                            onDailyPlan = { navController.navigate("plan")},
                             tasks = tasks,
                             onItemClick = { task ->
                                 dialogTask = task
@@ -243,6 +239,13 @@ class MainActivity : AppCompatActivity() {
                         NotificationSettingsScreen(
                             viewModel = settingsVm,
                             onClose = { navController.popBackStack() }
+                        )
+                    }
+
+                    composable("plan") {
+                        PlanScreen(
+                            viewModel = vm,
+                            onBack    = { navController.popBackStack() }
                         )
                     }
                 }

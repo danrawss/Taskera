@@ -19,6 +19,8 @@ import kotlinx.coroutines.flow.first
 import java.time.LocalTime
 import java.util.concurrent.TimeUnit
 import com.example.taskera.utils.combineDateAndTime
+import com.example.taskera.utils.endOfDayMillis
+import com.example.taskera.utils.startOfDayMillis
 import com.example.taskera.workers.ReminderWorker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -194,13 +196,6 @@ class TaskViewModel(
                 totalCount     = list.size
             )
         }
-
-    // Helpers to compute epoch millis for start/end of a LocalDate
-    private fun LocalDate.startOfDayMillis(): Long =
-        atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-
-    private fun LocalDate.endOfDayMillis(): Long =
-        atTime(LocalTime.MAX).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
     private val oneWeekWindow by lazy {
         val today = LocalDate.now()

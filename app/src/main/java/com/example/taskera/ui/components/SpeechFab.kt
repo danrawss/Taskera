@@ -8,21 +8,18 @@ import android.speech.RecognizerIntent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import com.example.taskera.data.Task
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
+import java.util.Locale
 import java.util.TimeZone
 
 /**
@@ -52,6 +49,8 @@ fun SpeechFab(
     onSettings: () -> Unit,
     onDashboard: () -> Unit,
     onDailyPlan: () -> Unit,
+    onMarkTodayBeforeNow: () -> Unit,
+    onShowTasksForDate: (LocalDate) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -93,79 +92,65 @@ fun SpeechFab(
                 .getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
                 ?.firstOrNull()
                 ?.trim()
-                ?.lowercase()
+                ?.lowercase(Locale.getDefault())
                 .orEmpty()
 
-            // If we are currently waiting to interpret “all” or a date:
+            // If we’re currently “waiting for date,” interpret this result as a date or “all”:
             if (waitingForDate) {
-                // Reset the flag so next time we go back to normal commands
-                setWaitingForDate(false)
+                setWaitingForDate(false) // turn the flag off immediately
 
-                val spokenDate = spoken  // e.g. “today” or “06/03/2025”
+                // 1) Handle the special “all” keyword:
+                if ("all" in spoken) {
+                    onShowTasksForDate(LocalDate.now())
+                    return@rememberLauncherForActivityResult
+                }
 
-                if ("all" in spokenDate) {
-                    // Show all task titles
-                    if (tasks.isEmpty()) {
-                        Toast.makeText(context, "No tasks to show", Toast.LENGTH_SHORT).show()
-                    } else {
-                        val allTitles = tasks.joinToString(", ") { it.title }
-                        Toast.makeText(
-                            context,
-                            "All tasks: $allTitles",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
-                } else {
-                    // Try parsing “today” / “tomorrow” / “MM/dd/yyyy”
-                    val today = LocalDate.now()
-                    val targetDate: LocalDate? = when (spokenDate) {
-                        "today" -> today
-                        "tomorrow" -> today.plusDays(1)
-                        else -> {
+                // 2) Normalize: remove ordinal suffixes (st, nd, rd, th) from numbers
+                //    e.g. “june fifth 2025” → “june five 2025”
+                val cleaned = spoken.replace(
+                    """\b(\d+)(st|nd|rd|th)\b""".toRegex(), "$1"
+                )
+
+                // 3) Try parsing “today” / “tomorrow”:
+                val today = LocalDate.now()
+                val targetDate: LocalDate? = when (cleaned) {
+                    "today"    -> today
+                    "tomorrow" -> today.plusDays(1)
+                    else       -> {
+                        // 4) Try “MMMM d yyyy” (e.g. “june 5 2025”)
+                        val fmtFull  = DateTimeFormatter.ofPattern("MMMM d yyyy", Locale.getDefault())
+                        val fmtShort = DateTimeFormatter.ofPattern("MMMM d", Locale.getDefault())
+                        try {
+                            LocalDate.parse(cleaned, fmtFull)
+                        } catch (e1: DateTimeParseException) {
+                            // 5) If that fails, try “MMMM d” (e.g. “june 5”) → assume current year
                             try {
-                                LocalDate.parse(
-                                    spokenDate,
-                                    DateTimeFormatter.ofPattern("MM/dd/yyyy")
-                                )
-                            } catch (e: DateTimeParseException) {
-                                null
+                                val withoutYear = LocalDate.parse(cleaned, fmtShort)
+                                // The parser above without a year will default to year=1970, so we override:
+                                withoutYear.withYear(today.year)
+                            } catch (e2: DateTimeParseException) {
+                                // 6) Last fallback: try numeric “MM/dd/yyyy” if spoken was numbers
+                                try {
+                                    LocalDate.parse(
+                                        cleaned,
+                                        DateTimeFormatter.ofPattern("MM/dd/yyyy", Locale.getDefault())
+                                    )
+                                } catch (e3: DateTimeParseException) {
+                                    null
+                                }
                             }
                         }
                     }
+                }
 
-                    if (targetDate == null) {
-                        Toast.makeText(
-                            context,
-                            "Sorry, couldn’t parse \"$spokenDate\" as a date",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    } else {
-                        // Filter tasks whose dueDate matches targetDate
-                        val matchesOnDate = tasks.filter { task ->
-                            task.dueDate
-                                ?.toInstant()
-                                ?.atZone(TimeZone.getDefault().toZoneId())
-                                ?.toLocalDate() == targetDate
-                        }
-                        if (matchesOnDate.isEmpty()) {
-                            Toast.makeText(
-                                context,
-                                "No tasks found for ${targetDate.format(
-                                    DateTimeFormatter.ofPattern("MM/dd/yyyy")
-                                )}",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        } else {
-                            val titlesForDate = matchesOnDate.joinToString { it.title }
-                            Toast.makeText(
-                                context,
-                                "Tasks on ${targetDate.format(
-                                    DateTimeFormatter.ofPattern("MM/dd/yyyy")
-                                )}: $titlesForDate",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        }
-                    }
+                if (targetDate == null) {
+                    Toast.makeText(
+                        context,
+                        "Sorry, couldn’t parse \"$spoken\" as a date",
+                        Toast.LENGTH_LONG
+                    ).show()
+                } else {
+                    onShowTasksForDate(targetDate)
                 }
                 return@rememberLauncherForActivityResult
             }
@@ -256,69 +241,78 @@ fun SpeechFab(
                     }
                 }
 
-                spoken.startsWith("show tasks") -> {
+                // “show tasks” → ask follow‐up
+                spoken.startsWith("show tasks")  -> {
                     val remainder = spoken.removePrefix("show tasks").trim()
                     if (remainder.isEmpty()) {
-                        // If they just said “show tasks” → ask the follow‐up
+                        // “show tasks” alone: ask follow-up
                         Toast.makeText(
                             context,
-                            "Do you want all tasks or tasks for a specific day? Say “all” or a date (e.g. MM/dd/yyyy).",
+                            "Do you want ALL tasks or tasks for a SPECIFIC day? Say “all” or a date (e.g. June 5 2025).",
                             Toast.LENGTH_LONG
                         ).show()
                         setWaitingForDate(true)
                     } else {
-                        // If they said “show tasks 06/03/2025” or “show tasks today”
-                        val spokenDate = remainder
-                        val today = LocalDate.now()
-                        val targetDate: LocalDate? = when (spokenDate) {
-                            "today" -> today
-                            "tomorrow" -> today.plusDays(1)
-                            else -> {
-                                try {
-                                    LocalDate.parse(
-                                        spokenDate,
-                                        DateTimeFormatter.ofPattern("MM/dd/yyyy")
-                                    )
-                                } catch (e: DateTimeParseException) {
-                                    null
+                        // “show tasks June 5 2025” or “show tasks today”
+                        // Step 1: check “all”
+                        if ("all" in remainder) {
+                            onShowTasksForDate(LocalDate.now())
+                        } else {
+                            val cleaned = remainder.replace(
+                                """\b(\d+)(st|nd|rd|th)\b""".toRegex(),
+                                "$1"
+                            )
+                            val today = LocalDate.now()
+                            val targetDate: LocalDate? = when (cleaned) {
+                                "today"    -> today
+                                "tomorrow" -> today.plusDays(1)
+                                else       -> {
+                                    // Try “MMMM d yyyy” first:
+                                    val fmtFull  = DateTimeFormatter.ofPattern("MMMM d yyyy", Locale.getDefault())
+                                    val fmtShort = DateTimeFormatter.ofPattern("MMMM d", Locale.getDefault())
+                                    try {
+                                        LocalDate.parse(cleaned, fmtFull)
+                                    } catch (e1: DateTimeParseException) {
+                                        try {
+                                            // If “June 5” was spoken (no year), parse with current year
+                                            LocalDate.parse(cleaned, fmtShort)
+                                                .withYear(today.year)
+                                        } catch (e2: DateTimeParseException) {
+                                            try {
+                                                // Fallback to numeric MM/dd/yyyy
+                                                LocalDate.parse(
+                                                    cleaned,
+                                                    DateTimeFormatter.ofPattern("MM/dd/yyyy", Locale.getDefault())
+                                                )
+                                            } catch (e3: DateTimeParseException) {
+                                                null
+                                            }
+                                        }
+                                    }
                                 }
                             }
-                        }
 
-                        if (targetDate == null) {
-                            Toast.makeText(
-                                context,
-                                "Sorry, couldn’t parse \"$spokenDate\" as a date",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        } else {
-                            val matchesOnDate = tasks.filter { task ->
-                                task.dueDate
-                                    ?.toInstant()
-                                    ?.atZone(TimeZone.getDefault().toZoneId())
-                                    ?.toLocalDate() == targetDate
-                            }
-                            if (matchesOnDate.isEmpty()) {
+                            if (targetDate == null) {
                                 Toast.makeText(
                                     context,
-                                    "No tasks found for ${targetDate.format(
-                                        DateTimeFormatter.ofPattern("MM/dd/yyyy")
-                                    )}",
+                                    "Couldn’t parse \"$remainder\" as a date",
                                     Toast.LENGTH_LONG
                                 ).show()
                             } else {
-                                val titlesForDate = matchesOnDate.joinToString { it.title }
-                                Toast.makeText(
-                                    context,
-                                    "Tasks on ${targetDate.format(
-                                        DateTimeFormatter.ofPattern("MM/dd/yyyy")
-                                    )}: $titlesForDate",
-                                    Toast.LENGTH_LONG
-                                ).show()
+                                // Immediately show the dialog for that date:
+                                onShowTasksForDate(targetDate)
                             }
                         }
                     }
+                    return@rememberLauncherForActivityResult
                 }
+
+                // look for “mark” + “today” + “task” + “done” in any order:
+                ("mark" in spoken || "finish" in spoken)
+                        && "today" in spoken
+                        && "task"  in spoken
+                        && ("done" in spoken || "complete" in spoken) ->
+                    onMarkTodayBeforeNow()
 
                 "settings" in spoken -> {
                     onSettings()

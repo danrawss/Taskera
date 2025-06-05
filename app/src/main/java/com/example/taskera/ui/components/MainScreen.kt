@@ -31,10 +31,23 @@ import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Brush
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.taskera.data.TaskDatabase
+import com.example.taskera.repository.TaskRepository
+import com.example.taskera.viewmodel.TaskViewModel
+import com.example.taskera.viewmodel.TaskViewModelFactory
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
+    vm: TaskViewModel,
     drawerState: DrawerState,
     onDailyPlan: () -> Unit,
     onDashboard: () -> Unit,
@@ -57,6 +70,9 @@ fun MainScreen(
 
     // Keep track of whether we are currently waiting for a “which date?” response
     var waitingForDate by remember { mutableStateOf(false) }
+    var showTasksDialog by remember { mutableStateOf(false) }
+    var tasksForThatDate by remember { mutableStateOf<List<Task>>(emptyList()) }
+    var dialogDate by remember { mutableStateOf(LocalDate.now()) }
     // If the user has said “show tasks” and we asked “Do you want all or for a specific day?”,
     // this flag tells us that the next spoken result should be interpreted as a date or “all”.
     // Once we handle it, we set waitingForDate = false.
@@ -74,6 +90,10 @@ fun MainScreen(
     val pagesBg         = MaterialTheme.colorScheme.secondaryContainer
     val abbreviationsBg = pagesBg.toArgb()
     val abbreviationsFg = MaterialTheme.colorScheme.onSecondaryContainer.toArgb()
+
+    // Current local date/time for logic
+    val nowLocalDate  = LocalDate.now()
+    val nowLocalTime  = LocalTime.now()
 
     // Pick a different set of gradient stops depending on light vs. dark mode:
     val backgroundBrush = if (isDarkMode) {
@@ -425,11 +445,74 @@ fun MainScreen(
                     onSettings = onSettings,
                     onDashboard = onDashboard,
                     onDailyPlan = onDailyPlan,
+                    onMarkTodayBeforeNow = {
+                        // Launch a coroutine to update all matching tasks:
+                        CoroutineScope(Dispatchers.IO).launch {
+                            tasks
+                                // 1) Only tasks whose dueDate == today’s date
+                                .filter { task ->
+                                    task.dueDate?.toInstant()
+                                        ?.atZone(ZoneId.systemDefault())
+                                        ?.toLocalDate() == nowLocalDate
+                                }
+                                // 2) And whose startTime (or midnight if null) is <= now
+                                .filter { task ->
+                                    val taskStart = task.startTime ?: LocalTime.MIDNIGHT
+                                    taskStart <= nowLocalTime
+                                }
+                                // 3) And not already completed
+                                .filter { task -> !task.isCompleted }
+                                // 4) Mark each as completed
+                                .forEach { task ->
+                                    vm.updateTask(task.copy(isCompleted = true))
+                                }
+                        }
+                    },
+                    onShowTasksForDate = { targetDate ->
+                        // Filter the current 'tasks' list for that LocalDate
+                        val matches = tasks.filter { task ->
+                            task.dueDate?.toInstant()
+                                ?.atZone(ZoneId.systemDefault())
+                                ?.toLocalDate() == targetDate
+                        }
+                        tasksForThatDate = matches
+                        dialogDate = targetDate
+                        showTasksDialog = true
+                    },
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .navigationBarsPadding()
                         .padding(16.dp)
                 )
+
+                if (showTasksDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showTasksDialog = false },
+                        title = {
+                            Text(
+                                text = "Tasks on ${dialogDate.format(
+                                    DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.getDefault())
+                                )}"
+                            )
+                        },
+                        text = {
+                            if (tasksForThatDate.isEmpty()) {
+                                Text("No tasks found for this date.")
+                            } else {
+                                Column {
+                                    tasksForThatDate.forEach { t ->
+                                        Text("• ${t.title}")
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { showTasksDialog = false }) {
+                                Text("OK")
+                            }
+                        }
+                    )
+                }
             }
         }
     }

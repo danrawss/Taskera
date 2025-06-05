@@ -111,6 +111,7 @@ class MainActivity : AppCompatActivity() {
                     composable("home") {
                         // Render the main calendar/tasks screen
                         MainScreen(
+                            vm = vm,
                             drawerState = drawerState,
                             onDashboard = { navController.navigate("dashboard") },
                             onDailyPlan = { navController.navigate("plan")},

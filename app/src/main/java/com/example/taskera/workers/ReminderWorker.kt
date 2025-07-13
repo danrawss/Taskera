@@ -18,7 +18,14 @@ class ReminderWorker(
 
     override suspend fun doWork(): Result {
         val taskId = inputData.getInt("taskId", -1)
+        val triggerAt   = inputData.getLong  ("triggerAt", -1L)
         val title  = inputData.getString("title") ?: "Task Reminder"
+        val now         = System.currentTimeMillis()
+
+        // If we're more than 5 minutes past the intended trigger, drop it
+        if (triggerAt > 0 && now > triggerAt + 5 * 60_000L) {
+            return Result.success()
+        }
 
         // Create an Intent to open MainActivity
         val launchIntent = Intent(applicationContext, MainActivity::class.java).apply {

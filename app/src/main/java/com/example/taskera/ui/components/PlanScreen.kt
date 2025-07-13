@@ -1,9 +1,7 @@
 package com.example.taskera.ui.components
 
-import android.content.Context
 import android.widget.Toast
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,7 +15,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.taskera.data.Task
 import com.example.taskera.ui.utils.createTodayPlanPdf
 import com.example.taskera.utils.endOfDayMillis
@@ -62,94 +59,100 @@ fun PlanScreen(
         buildTodaySegments(tasksForToday)
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color    = MaterialTheme.colorScheme.background
     ) {
-        // Top “Back” row
-        SmallTopAppBar(
-            title = { Text("Daily Plan") },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
+            // Top “Back” row
+            SmallTopAppBar(
+                title = { Text("Daily Plan") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
                 }
-            }
-        )
-        Spacer(Modifier.height(16.dp))
-
-        Spacer(Modifier.height(16.dp))
-
-        if (segments.isEmpty()) {
-            // No timed tasks at all
-            Text(
-                text = "No timed tasks for today.",
-                style = MaterialTheme.typography.bodyMedium
             )
             Spacer(Modifier.height(16.dp))
-            Button(
-                onClick = { /* no tasks to PDFify, so maybe disable this? */ },
-                enabled = false,
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            ) {
-                Text("Generate PDF")
-            }
-        } else {
-            // 5) Show segments in a LazyColumn
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.weight(1f)
-            ) {
-                items(segments) { segment ->
-                    when (segment) {
-                        is DaySegment.Free -> {
-                            FreeSegmentCard(segment)
-                        }
-                        is DaySegment.TaskItem -> {
-                            TaskSegmentCard(segment)
-                        }
-                    }
-                }
-            }
 
             Spacer(Modifier.height(16.dp))
 
-            // 6) “Generate PDF” button (same as before)
-            Button(
-                onClick = {
-                    scope.launch {
-                        try {
-                            val pdfFile = createTodayPlanPdf(
-                                context = context,
-                                tasksForToday = tasksForToday,
-                                date = LocalDate.now()
-                            )
-                            withContext(Dispatchers.Main) {
-                                Toast
-                                    .makeText(
-                                        context,
-                                        "PDF saved: ${pdfFile.absolutePath}",
-                                        Toast.LENGTH_LONG
-                                    )
-                                    .show()
+            if (segments.isEmpty()) {
+                // No timed tasks at all
+                Text(
+                    text = "No timed tasks for today.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(Modifier.height(16.dp))
+                Button(
+                    onClick = { /* no tasks to PDFify, so maybe disable this? */ },
+                    enabled = false,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                ) {
+                    Text("Generate PDF")
+                }
+            } else {
+                // 5) Show segments in a LazyColumn
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    items(segments) { segment ->
+                        when (segment) {
+                            is DaySegment.Free -> {
+                                FreeSegmentCard(segment)
                             }
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                            withContext(Dispatchers.Main) {
-                                Toast
-                                    .makeText(
-                                        context,
-                                        "Error generating PDF: ${e.localizedMessage}",
-                                        Toast.LENGTH_LONG
-                                    )
-                                    .show()
+                            is DaySegment.TaskItem -> {
+                                TaskSegmentCard(segment)
                             }
                         }
                     }
-                },
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            ) {
-                Text("Generate PDF")
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // 6) “Generate PDF” button
+                Button(
+                    onClick = {
+                        scope.launch {
+                            try {
+                                val date = LocalDate.now()
+                                // Compute the same filename your util uses:
+                                val filename = "daily_plan_${date.format(DateTimeFormatter.ofPattern("MM-dd-yyyy"))}.pdf"
+
+                                createTodayPlanPdf(context, tasksForToday, date)
+
+                                withContext(Dispatchers.Main) {
+                                    Toast
+                                        .makeText(
+                                            context,
+                                            "PDF saved to Downloads/$filename",
+                                            Toast.LENGTH_LONG
+                                        )
+                                        .show()
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                                withContext(Dispatchers.Main) {
+                                    Toast
+                                        .makeText(
+                                            context,
+                                            "Error generating PDF: ${e.localizedMessage}",
+                                            Toast.LENGTH_LONG
+                                        )
+                                        .show()
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                ) {
+                    Text("Generate PDF")
+                }
             }
         }
     }

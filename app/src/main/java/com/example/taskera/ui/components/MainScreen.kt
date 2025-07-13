@@ -31,12 +31,7 @@ import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Brush
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.taskera.data.TaskDatabase
-import com.example.taskera.repository.TaskRepository
 import com.example.taskera.viewmodel.TaskViewModel
-import com.example.taskera.viewmodel.TaskViewModelFactory
-import com.google.android.gms.auth.api.signin.GoogleSignIn
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import java.time.LocalDate
@@ -60,8 +55,6 @@ fun MainScreen(
     onDateClick: (Date, Long, Long) -> Unit,
     isDarkMode: Boolean,
     onToggleDarkMode: (Boolean) -> Unit,
-    onHome:    () -> Unit,
-    onAccount: () -> Unit,
     onSettings:() -> Unit,
     onLogout: () -> Unit
 ) {
@@ -152,40 +145,6 @@ fun MainScreen(
                             scope.launch { drawerState.close() }
                         },
                         icon     = { Icon(painterResource(R.drawable.ic_calendar_day), null) },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                    )
-
-                    NavigationDrawerItem(
-                        label    = { Text("Home") },
-                        selected = false,
-                        onClick  = {
-                            onHome()
-                            scope.launch { drawerState.close() }
-                        },
-                        icon     = {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_home),
-                                contentDescription = "Home",
-                                modifier = Modifier.size(24.dp)
-                            )
-                        },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                    )
-
-                    NavigationDrawerItem(
-                        label    = { Text("Account Info") },
-                        selected = false,
-                        onClick  = {
-                            onAccount()
-                            scope.launch { drawerState.close() }
-                        },
-                        icon     = {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_account),
-                                contentDescription = "Account Info",
-                                modifier = Modifier.size(24.dp)
-                            )
-                        },
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                     )
 

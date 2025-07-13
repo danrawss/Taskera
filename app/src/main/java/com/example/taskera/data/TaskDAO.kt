@@ -1,7 +1,6 @@
 package com.example.taskera.data
 
 import androidx.lifecycle.LiveData
-import java.util.Date
 import androidx.room.*
 
 @Dao

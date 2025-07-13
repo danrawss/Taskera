@@ -1,4 +1,3 @@
-// File: ui/components/SpeechFab.kt
 package com.example.taskera.ui.components
 
 import android.Manifest
@@ -20,7 +19,6 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.util.Locale
-import java.util.TimeZone
 
 /**
  * A reusable Composable that:

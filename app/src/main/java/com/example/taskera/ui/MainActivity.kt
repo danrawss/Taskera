@@ -142,8 +142,6 @@ class MainActivity : AppCompatActivity() {
                                 isDarkMode = enabled
                                 prefs.edit().putBoolean("dark_mode", enabled).apply()
                             },
-                            onHome = {},
-                            onAccount = {},
                             onSettings = {
                                 navController.navigate("settings")
                             },

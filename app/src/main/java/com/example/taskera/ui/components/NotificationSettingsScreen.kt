@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Surface
 
 import com.example.taskera.viewmodel.SettingsViewModel
 
@@ -39,44 +40,49 @@ fun NotificationSettingsScreen(
     val enabled by viewModel.remindersEnabled.observeAsState(true)
     val leadMin by viewModel.defaultLeadMin.observeAsState(30)
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .padding(16.dp)
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color    = MaterialTheme.colorScheme.background
     ) {
-        SmallTopAppBar(
-            title = { Text("Notifications") },
-            navigationIcon = {
-                IconButton(onClick = onClose) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
+            SmallTopAppBar(
+                title = { Text("Notifications") },
+                navigationIcon = {
+                    IconButton(onClick = onClose) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
                 }
+            )
+
+            Spacer(Modifier.height(24.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Enable reminders", Modifier.weight(1f))
+                Switch(
+                    checked = enabled,
+                    onCheckedChange = { viewModel.setRemindersEnabled(it) }
+                )
             }
-        )
 
-        Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(16.dp))
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Enable reminders", Modifier.weight(1f))
-            Switch(
-                checked = enabled,
-                onCheckedChange = { viewModel.setRemindersEnabled(it) }
+            Text(
+                "Default lead time",
+                style = MaterialTheme.typography.titleSmall
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            LeadTimeDropdown(
+                options = listOf(5, 10, 15, 30, 60).map { Duration.ofMinutes(it.toLong()) },
+                selected = Duration.ofMinutes(leadMin.toLong()),
+                includeNoReminder = false,
+                onSelect = { viewModel.setDefaultLeadMin(it.toMinutes().toInt()) }
             )
         }
-
-        Spacer(Modifier.height(16.dp))
-
-        Text(
-            "Default lead time",
-            style = MaterialTheme.typography.titleSmall
-        )
-
-        Spacer(Modifier.height(8.dp))
-
-        LeadTimeDropdown(
-            options = listOf(5, 10, 15, 30, 60).map { Duration.ofMinutes(it.toLong()) },
-            selected = Duration.ofMinutes(leadMin.toLong()),
-            includeNoReminder = false,
-            onSelect = { viewModel.setDefaultLeadMin(it.toMinutes().toInt()) }
-        )
     }
 }

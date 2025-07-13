@@ -295,16 +295,17 @@ class TaskViewModel(
         Log.d("Reminders", "Scheduling reminder for task ${task.id} in $delay ms (lead $leadMin min)")
 
         val work = OneTimeWorkRequestBuilder<ReminderWorker>()
-            .setInitialDelay(delay, TimeUnit.MILLISECONDS)
+            .setInitialDelay(triggerAt - System.currentTimeMillis(), TimeUnit.MILLISECONDS)
             .setInputData(
                 workDataOf(
-                    "taskId" to task.id,
-                    "title"  to task.title
+                    "taskId"    to task.id,
+                    "title"     to task.title,
+                    "triggerAt" to triggerAt
                 )
             )
             .build()
 
-        wm.enqueueUniqueWork(workName, ExistingWorkPolicy.REPLACE, work)
+        wm.enqueueUniqueWork("reminder-${task.id}", ExistingWorkPolicy.REPLACE, work)
     }
 
     private fun cancelReminder(task: Task) {

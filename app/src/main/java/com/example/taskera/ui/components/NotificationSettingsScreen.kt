@@ -24,7 +24,9 @@ import androidx.compose.ui.Alignment
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 
 import com.example.taskera.viewmodel.SettingsViewModel
@@ -35,54 +37,57 @@ import java.time.Duration
 @Composable
 fun NotificationSettingsScreen(
     viewModel: SettingsViewModel,
-    onClose: () -> Unit
+    onMenuClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val enabled by viewModel.remindersEnabled.observeAsState(true)
     val leadMin by viewModel.defaultLeadMin.observeAsState(30)
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color    = MaterialTheme.colorScheme.background
-    ) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
+    Scaffold(
+        modifier = modifier,
+        topBar = {
             SmallTopAppBar(
                 title = { Text("Notifications") },
                 navigationIcon = {
-                    IconButton(onClick = onClose) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    IconButton(onClick = onMenuClick) {
+                        Icon(Icons.Default.Menu, contentDescription = "Open drawer")
                     }
                 }
             )
+        },
+        content = { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)  // inset for status bar / app bar
+                    .padding(16.dp)         // your own content padding
+            ) {
+                Spacer(Modifier.height(24.dp))
 
-            Spacer(Modifier.height(24.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Enable reminders", Modifier.weight(1f))
+                    Switch(
+                        checked = enabled,
+                        onCheckedChange = { viewModel.setRemindersEnabled(it) }
+                    )
+                }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Enable reminders", Modifier.weight(1f))
-                Switch(
-                    checked = enabled,
-                    onCheckedChange = { viewModel.setRemindersEnabled(it) }
+                Spacer(Modifier.height(16.dp))
+
+                Text(
+                    "Default lead time",
+                    style = MaterialTheme.typography.titleSmall
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                LeadTimeDropdown(
+                    options = listOf(5, 10, 15, 30, 60).map { Duration.ofMinutes(it.toLong()) },
+                    selected = Duration.ofMinutes(leadMin.toLong()),
+                    includeNoReminder = false,
+                    onSelect = { viewModel.setDefaultLeadMin(it.toMinutes().toInt()) }
                 )
             }
-
-            Spacer(Modifier.height(16.dp))
-
-            Text(
-                "Default lead time",
-                style = MaterialTheme.typography.titleSmall
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            LeadTimeDropdown(
-                options = listOf(5, 10, 15, 30, 60).map { Duration.ofMinutes(it.toLong()) },
-                selected = Duration.ofMinutes(leadMin.toLong()),
-                includeNoReminder = false,
-                onSelect = { viewModel.setDefaultLeadMin(it.toMinutes().toInt()) }
-            )
         }
-    }
+    )
 }

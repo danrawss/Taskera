@@ -11,6 +11,8 @@ import android.app.NotificationManager
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.*
@@ -37,12 +39,31 @@ import androidx.navigation.compose.composable
 import com.example.taskera.ui.components.DashboardScreen
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material3.Divider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.NavigationDrawerItemDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.example.taskera.R
 import com.example.taskera.ui.components.NotificationSettingsScreen
 import com.example.taskera.ui.components.PlanScreen
 import com.example.taskera.viewmodel.SettingsViewModel
 import com.example.taskera.viewmodel.SettingsViewModelFactory
+import kotlinx.coroutines.launch
 import java.time.Duration
 
 class MainActivity : AppCompatActivity() {
@@ -81,6 +102,11 @@ class MainActivity : AppCompatActivity() {
 
         setContent {
             var isDarkMode by rememberSaveable { mutableStateOf(initialDark) }
+            val toggleDarkMode: (Boolean) -> Unit = { enabled ->
+                isDarkMode = enabled
+                prefs.edit().putBoolean("dark_mode", enabled).apply()
+            }
+
             TaskeraTheme(darkTheme = isDarkMode) {
                 // Dialog and navigation state
                 var dialogTask   by remember { mutableStateOf<Task?>(null) }
@@ -104,148 +130,269 @@ class MainActivity : AppCompatActivity() {
                 val defaultLeadMin by settingsVm.defaultLeadMin.observeAsState(initial = 30)
                 val defaultLeadDuration = Duration.ofMinutes(defaultLeadMin.toLong())
 
-                NavHost(
-                    navController = navController,
-                    startDestination = "home"
-                ) {
-                    composable("home") {
-                        // Render the main calendar/tasks screen
-                        MainScreen(
-                            vm = vm,
-                            drawerState = drawerState,
-                            onDashboard = { navController.navigate("dashboard") },
-                            onDailyPlan = { navController.navigate("plan")},
-                            tasks = tasks,
-                            onItemClick = { task ->
-                                dialogTask = task
-                                isDialogOpen = true
-                            },
-                            onTaskStatusChanged = { task, done ->
-                                vm.updateTask(task.copy(isCompleted = done))
-                            },
-                            onAddTask = {
-                                dialogTask = null
-                                isDialogOpen = true
-                            },
-                            onEditTask = { task ->
-                                dialogTask = task
-                                isDialogOpen = true
-                            },
-                            onDeleteTask = { task ->
-                                vm.deleteTask(task)
-                            },
-                            onDateClick = { date, start, end ->
-                                dateWindow = date to (start to end)
-                            },
-                            isDarkMode = isDarkMode,
-                            onToggleDarkMode = { enabled ->
-                                isDarkMode = enabled
-                                prefs.edit().putBoolean("dark_mode", enabled).apply()
-                            },
-                            onSettings = {
-                                navController.navigate("settings")
-                            },
-                            onLogout = {
-                                // Sign out and return to login screen
-                                val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN).build()
-                                GoogleSignIn.getClient(composeContext, gso)
-                                    .signOut()
-                                    .addOnCompleteListener {
-                                        composeContext.startActivity(
-                                            Intent(composeContext, ComposeLoginActivity::class.java)
-                                        )
-                                        activity.finish()
-                                    }
-                            }
-                        )
+                val scope = rememberCoroutineScope()
 
-                        // Show add/edit task dialog
-                        if (isDialogOpen) {
-                            TaskDialog(
-                                task        = dialogTask,
-                                defaultLead = defaultLeadDuration,
-                                onDismiss   = { isDialogOpen = false },
-                                onSubmit    = { result, leadDuration ->
-                                    // Build the final Task once, with email + leadTimeMin
-                                    val email  = GoogleSignIn.getLastSignedInAccount(composeContext)
-                                        ?.email
-                                        .orEmpty()
-                                    if (dialogTask == null) {
-                                        // Adding
-                                        // Build a brand-new Task (no calendarEventId yet)
-                                        val toSave = result.copy(
-                                            userEmail       = email,
-                                            leadTimeMin     = leadDuration.toMinutes().toInt(),
-                                            calendarEventId = null
-                                        )
-                                        vm.insertTask(toSave)
-                                    } else {
-                                        // Editing
-                                        // Take the existing Task (dialogTask), and copy over only the edited fields,
-                                        // preserving its id and calendarEventId
-                                        val original = dialogTask!!
-                                        val updated = original.copy(
-                                            title           = result.title,
-                                            description     = result.description?.takeIf { it.isNotBlank() },
-                                            dueDate         = result.dueDate,
-                                            startTime       = result.startTime,
-                                            endTime         = result.endTime,
-                                            priority        = result.priority,
-                                            category        = result.category,
-                                            leadTimeMin     = leadDuration.toMinutes().toInt(),
-                                            userEmail       = email,
-                                            calendarEventId = original.calendarEventId
-                                        )
-                                        vm.updateTask(updated)
-                                    }
+                ModalNavigationDrawer(
+                    drawerState = drawerState,
+                    drawerContent = {
+                        ModalDrawerSheet {
+                            Text(
+                                "Taskera",
+                                style = MaterialTheme.typography.headlineSmall,
+                                modifier = Modifier.padding(16.dp)
+                            )
+                            Divider()
 
-                                    isDialogOpen = false
-                                }
+                            // Home
+                            NavigationDrawerItem(
+                                label    = { Text("Home") },
+                                selected = false,
+                                onClick = {
+                                    navController.navigate("home"){ popUpTo("home") }
+                                    scope.launch { drawerState.close() }
+                                },
+                                icon = { Icon(Icons.Default.Home, contentDescription = null) },
+                                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                            )
+
+                            // Drawer items
+                            NavigationDrawerItem(
+                                label    = { Text("Dashboard") },
+                                selected = false,
+                                onClick  = {
+                                    navController.navigate("dashboard")
+                                    scope.launch { drawerState.close() }
+                                },
+                                icon     = { Icon(painterResource(com.example.taskera.R.drawable.ic_dashboard), null) },
+                                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                            )
+
+                            // Daily plan
+                            NavigationDrawerItem(
+                                label    = { Text("Daily Plan") },
+                                selected = false,
+                                onClick  = {
+                                    navController.navigate("plan")
+                                    scope.launch { drawerState.close() }
+                                },
+                                icon     = { Icon(painterResource(com.example.taskera.R.drawable.ic_calendar_day), null) },
+                                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                            )
+
+                            NavigationDrawerItem(
+                                label    = { Text("Settings") },
+                                selected = false,
+                                onClick  = {
+                                    navController.navigate("settings")
+                                    scope.launch { drawerState.close() }
+                                },
+                                icon     = {
+                                    Icon(
+                                        painter = painterResource(com.example.taskera.R.drawable.ic_settings),
+                                        contentDescription = "Settings",
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                },
+                                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                            )
+
+                            // Dark Mode toggle in drawer
+                            NavigationDrawerItem(
+                                label = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("Dark Mode")
+                                        Spacer(Modifier.width(8.dp))
+                                        Switch(
+                                            checked = isDarkMode,
+                                            onCheckedChange = toggleDarkMode
+                                        )
+                                    }
+                                },
+                                selected = isDarkMode,
+                                onClick  = {
+                                    toggleDarkMode(!isDarkMode)
+                                    scope.launch { drawerState.close() } },
+                                icon     = {
+                                    Icon(
+                                        painter = painterResource(com.example.taskera.R.drawable.ic_dark_mode),
+                                        contentDescription = "Dark Mode",
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                },
+                                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                            )
+
+                            NavigationDrawerItem(
+                                label    = { Text("Logout") },
+                                selected = false,
+                                onClick  = {
+                                    val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                                        .build()
+                                    GoogleSignIn.getClient(composeContext, gso)
+                                        .signOut()
+                                        .addOnCompleteListener {
+                                            composeContext.startActivity(
+                                                Intent(composeContext, ComposeLoginActivity::class.java)
+                                            )
+                                            activity.finish()
+                                        }
+                                    scope.launch { drawerState.close() }
+                                },
+                                icon     = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_logout),
+                                        contentDescription = "Logout"
+                                    )
+                                },
+                                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                             )
                         }
-
-                        // Show tasks by date dialog when a day is selected
-                        dateWindow?.let { (date, range) ->
-                            val tasksForDate by vm.getTasksByDate(range.first, range.second)
-                                .observeAsState(initial = emptyList())
-                            TasksByDateDialog(
-                                date = date,
-                                tasks = tasksForDate,
-                                onDismiss = { dateWindow = null },
+                    }
+                ) {
+                    NavHost(
+                        navController = navController,
+                        startDestination = "home"
+                    ) {
+                        composable("home") {
+                            // Render the main calendar/tasks screen
+                            MainScreen(
+                                vm = vm,
+                                drawerState = drawerState,
+                                onMenuClick = { scope.launch { drawerState.open() } },
+                                onDashboard = { navController.navigate("dashboard") },
+                                onDailyPlan = { navController.navigate("plan")},
+                                tasks = tasks,
                                 onItemClick = { task ->
                                     dialogTask = task
                                     isDialogOpen = true
-                                    dateWindow = null
                                 },
                                 onTaskStatusChanged = { task, done ->
                                     vm.updateTask(task.copy(isCompleted = done))
+                                },
+                                onAddTask = {
+                                    dialogTask = null
+                                    isDialogOpen = true
+                                },
+                                onEditTask = { task ->
+                                    dialogTask = task
+                                    isDialogOpen = true
+                                },
+                                onDeleteTask = { task ->
+                                    vm.deleteTask(task)
+                                },
+                                onDateClick = { date, start, end ->
+                                    dateWindow = date to (start to end)
+                                },
+                                isDarkMode = isDarkMode,
+                                onToggleDarkMode = { enabled ->
+                                    isDarkMode = enabled
+                                    prefs.edit().putBoolean("dark_mode", enabled).apply()
+                                },
+                                onSettings = {
+                                    navController.navigate("settings")
+                                },
+                                onLogout = {
+                                    // Sign out and return to login screen
+                                    val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN).build()
+                                    GoogleSignIn.getClient(composeContext, gso)
+                                        .signOut()
+                                        .addOnCompleteListener {
+                                            composeContext.startActivity(
+                                                Intent(composeContext, ComposeLoginActivity::class.java)
+                                            )
+                                            activity.finish()
+                                        }
                                 }
                             )
+
+                            // Show add/edit task dialog
+                            if (isDialogOpen) {
+                                TaskDialog(
+                                    task        = dialogTask,
+                                    defaultLead = defaultLeadDuration,
+                                    onDismiss   = { isDialogOpen = false },
+                                    onSubmit    = { result, leadDuration ->
+                                        // Build the final Task once, with email + leadTimeMin
+                                        val email  = GoogleSignIn.getLastSignedInAccount(composeContext)
+                                            ?.email
+                                            .orEmpty()
+                                        if (dialogTask == null) {
+                                            // Adding
+                                            // Build a brand-new Task (no calendarEventId yet)
+                                            val toSave = result.copy(
+                                                userEmail       = email,
+                                                leadTimeMin     = leadDuration.toMinutes().toInt(),
+                                                calendarEventId = null
+                                            )
+                                            vm.insertTask(toSave)
+                                        } else {
+                                            // Editing
+                                            // Take the existing Task (dialogTask), and copy over only the edited fields,
+                                            // preserving its id and calendarEventId
+                                            val original = dialogTask!!
+                                            val updated = original.copy(
+                                                title           = result.title,
+                                                description     = result.description?.takeIf { it.isNotBlank() },
+                                                dueDate         = result.dueDate,
+                                                startTime       = result.startTime,
+                                                endTime         = result.endTime,
+                                                priority        = result.priority,
+                                                category        = result.category,
+                                                leadTimeMin     = leadDuration.toMinutes().toInt(),
+                                                userEmail       = email,
+                                                calendarEventId = original.calendarEventId
+                                            )
+                                            vm.updateTask(updated)
+                                        }
+
+                                        isDialogOpen = false
+                                    }
+                                )
+                            }
+
+                            // Show tasks by date dialog when a day is selected
+                            dateWindow?.let { (date, range) ->
+                                val tasksForDate by vm.getTasksByDate(range.first, range.second)
+                                    .observeAsState(initial = emptyList())
+                                TasksByDateDialog(
+                                    date = date,
+                                    tasks = tasksForDate,
+                                    onDismiss = { dateWindow = null },
+                                    onItemClick = { task ->
+                                        dialogTask = task
+                                        isDialogOpen = true
+                                        dateWindow = null
+                                    },
+                                    onTaskStatusChanged = { task, done ->
+                                        vm.updateTask(task.copy(isCompleted = done))
+                                    }
+                                )
+                            }
                         }
-                    }
 
-                    composable("dashboard") {
-                        DashboardScreen(
-                            stats = stats,
-                            weeklyCategories = weeklyStats,
-                            oneWeekTrend = trendData,
-                            onClose = { navController.popBackStack() },
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
+                        composable("dashboard") {
+                            DashboardScreen(
+                                stats = stats,
+                                weeklyCategories = weeklyStats,
+                                oneWeekTrend = trendData,
+                                onMenuClick  = { scope.launch { drawerState.open() } },
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
 
-                    composable("settings") {
-                        NotificationSettingsScreen(
-                            viewModel = settingsVm,
-                            onClose = { navController.popBackStack() }
-                        )
-                    }
+                        composable("settings") {
+                            NotificationSettingsScreen(
+                                viewModel = settingsVm,
+                                onMenuClick  = { scope.launch { drawerState.open() } }
+                            )
+                        }
 
-                    composable("plan") {
-                        PlanScreen(
-                            viewModel = vm,
-                            onBack    = { navController.popBackStack() }
-                        )
+                        composable("plan") {
+                            PlanScreen(
+                                viewModel = vm,
+                                onMenuClick  = { scope.launch { drawerState.open() } }
+                            )
+                        }
                     }
                 }
             }

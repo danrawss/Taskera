@@ -38,6 +38,8 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlin.math.abs
+import java.util.Date
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -88,6 +90,7 @@ fun MainScreen(
     // Current local date/time for logic
     val nowLocalDate  = LocalDate.now()
     val nowLocalTime  = LocalTime.now()
+    val todayDate = Date()
 
     // Pick a different set of gradient stops depending on light vs. dark mode:
     val backgroundBrush = if (isDarkMode) {
@@ -271,7 +274,19 @@ fun MainScreen(
                             }
                         }
 
-                        "Due Date" -> tasks.sortedBy { it.dueDate ?: Date(Long.MAX_VALUE) }
+                        "Due Date" -> {
+                            // Split out tasks with a due‐date vs. without
+                            val withDate    = tasks.filter { it.dueDate != null }
+                            val withoutDate = tasks.filter { it.dueDate == null }
+
+                            // Sort the dated tasks by abs(dueDate - today)
+                            val nearestFirst = withDate.sortedBy { task ->
+                                abs(task.dueDate!!.time - todayDate.time)
+                            }
+
+                            // Append the tasks missing a due‐date at the end
+                            nearestFirst + withoutDate
+                        }
                         else -> tasks
                     }
 

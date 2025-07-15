@@ -75,7 +75,7 @@ fun SpeechFab(
             )
             putExtra(
                 RecognizerIntent.EXTRA_PROMPT,
-                "Commands: add task, delete task, edit task, show tasks, settings, dashboard"
+                "Say a command—add, edit, delete, show tasks, dashboard or settings."
             )
         }
     }
